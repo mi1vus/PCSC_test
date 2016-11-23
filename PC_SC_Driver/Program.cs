@@ -15,6 +15,7 @@ namespace PC_SC_Driver
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
             Application.Run(new Form1());
         }
     }

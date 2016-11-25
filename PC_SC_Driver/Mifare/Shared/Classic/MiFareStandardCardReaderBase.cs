@@ -78,12 +78,6 @@ namespace MiFare.Classic
                 System.Windows.Forms.MessageBox.Show("1251");
             }
 
-
-
-//            storage = LoadKeys.LoadKeysStorageType.Volatile;
-
-
-
             var keyTypeToUse = key;
             byte[] keyToUse;
 

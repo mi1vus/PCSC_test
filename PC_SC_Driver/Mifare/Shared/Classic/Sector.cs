@@ -160,7 +160,6 @@ namespace MiFare.Classic
         public async Task<byte[]> GetData(int block)
         {
             var db = await GetDataBlockInt(block);
-
             return db?.Data;
         }
 
@@ -184,16 +183,6 @@ namespace MiFare.Classic
 
                 var blockData = await GetData(blockIdx);
 
-                //card.Reader
-                if (this.card.Reader.GetType() == typeof(MiFareWin32CardReader)
-                    && (this.card.Reader as MiFareWin32CardReader).SmartCard.ReaderName.Contains("FEIG"))
-                {
-                    //TODO
-                    //Array.Reverse(blockData);
-                    //Array.Copy(data, bytesWritten, blockData, 0, numBytes);
-                    //Array.Reverse(blockData);
-                }
-                
                 Array.Copy(data, bytesWritten, blockData, 0, numBytes);
 
                 bytesWritten += numBytes;
@@ -216,6 +205,7 @@ namespace MiFare.Classic
                 throw new CardWriteException($"Unable to write in sector {sector}, block {dataBlock.Number}");
         }
 
+        private int ActiveBlock = -1;
         private async Task<DataBlock> GetDataBlockInt(int block)
         {
             var db = dataBlocks[block];
@@ -223,11 +213,12 @@ namespace MiFare.Classic
             if (db != null)
                 return db;
 
-            if (card.ActiveSector != sector)
+            if (card.ActiveSector != sector || ActiveBlock != block)
             {
-                // In some cases, Key A may not be present, so try logging in with Key B
+                ActiveBlock = block;
                 if (!await card.Reader.Login(sector, InternalKeyType.KeyA))
                 {
+                    // In some cases, Key A may not be present, so try logging in with Key B
                     if (!await card.Reader.Login(sector, InternalKeyType.KeyB))
                     {
                         throw new CardLoginException($"Unable to login in sector {sector} with key A or B");
@@ -237,12 +228,6 @@ namespace MiFare.Classic
                 var res = await card.Reader.Read(sector, block);
                 if (!res.Item1)
                     throw new CardReadException($"Unable to read from sector {sector}, block {block}");
-                //card.Reader
-                if (card.Reader.GetType() == typeof(MiFareWin32CardReader)
-                    && (card.Reader as MiFareWin32CardReader).SmartCard.ReaderName.Contains("FEIG"))
-                {
-                    //TODO Array.Reverse(res.Item2);
-                }
 
                 db = new DataBlock(block, res.Item2, (block == TrailerBlockIndex));
                 dataBlocks[block] = db;

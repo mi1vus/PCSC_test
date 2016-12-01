@@ -160,6 +160,7 @@ namespace MiFare.Classic
         public async Task<byte[]> GetData(int block)
         {
             var db = await GetDataBlockInt(block);
+
             return db?.Data;
         }
 
@@ -190,13 +191,37 @@ namespace MiFare.Classic
             }
         }
 
+        /// <summary>
+        ///     restore data from a cache
+        /// </summary>
+        /// <param name="block">index of the datablock</param>
+        /// <returns>data read (always 16 bytes)</returns>
+        /// <remarks>may throw CardLoginException and CardReadException</remarks>
+        public async Task<bool> RestoreData(int block)
+        {
+            var db = await GetDataBlockInt(block);
+            if (db.IsChanged)
+                return db?.RestoreData() ?? false;
+            return false;
+        }
+
         private async Task FlushDataBlock(DataBlock dataBlock)
         {
             if (card.ActiveSector != sector)
             {
                 var writeKey = GetWriteKey(dataBlock.Number);
-                if (!await card.Reader.Login(sector, writeKey))
-                    throw new CardLoginException($"Unable to login in sector {sector} with key {writeKey}");
+
+                if (writeKey == InternalKeyType.KeyAOrB)
+                {
+                    if (!await card.Reader.Login(sector, InternalKeyType.KeyA))
+                        if (!await card.Reader.Login(sector, InternalKeyType.KeyB))
+                            throw new CardLoginException($"Unable to login in sector {sector} with key A or B");
+                }
+                else
+                {
+                    if (!await card.Reader.Login(sector, writeKey))
+                        throw new CardLoginException($"Unable to login in sector {sector} with key {writeKey}");
+                }
 
                 card.ActiveSector = sector;
             }
@@ -215,7 +240,6 @@ namespace MiFare.Classic
 
             if (card.ActiveSector != sector || ActiveBlock != block)
             {
-                ActiveBlock = block;
                 if (!await card.Reader.Login(sector, InternalKeyType.KeyA))
                 {
                     // In some cases, Key A may not be present, so try logging in with Key B
@@ -231,6 +255,7 @@ namespace MiFare.Classic
 
                 db = new DataBlock(block, res.Item2, (block == TrailerBlockIndex));
                 dataBlocks[block] = db;
+                ActiveBlock = block;
             }
 
             return db;
@@ -254,7 +279,12 @@ namespace MiFare.Classic
             if (datablock == TrailerBlockIndex)
                 return GetTrailerWriteKey();
 
-            return (originalAccessConditions.DataAreas[Math.Min(datablock, Access.DataAreas.Length - 1)].Write == DataAreaAccessCondition.ConditionEnum.KeyA) ? InternalKeyType.KeyA : InternalKeyType.KeyB;
+            var writeAccess = originalAccessConditions.DataAreas[Math.Min(datablock, Access.DataAreas.Length - 1)].Write;
+
+            if (writeAccess == DataAreaAccessCondition.ConditionEnum.KeyAOrB)
+                return InternalKeyType.KeyAOrB;
+
+            return (writeAccess == DataAreaAccessCondition.ConditionEnum.KeyA) ? InternalKeyType.KeyA : InternalKeyType.KeyB;
         }
     }
 }

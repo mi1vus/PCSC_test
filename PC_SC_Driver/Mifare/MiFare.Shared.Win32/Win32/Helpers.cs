@@ -11,7 +11,7 @@ namespace MiFare.Win32
 {
     internal static class Helpers
     {
-        public static void CheckError(int errorCode, [CallerMemberName] string callerMemberName = null, [CallerLineNumber] int callerLineNum = 0)
+        public static void CheckError(int errorCode, [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = null, [CallerLineNumber] int callerLineNum = 0)
         {
             if (errorCode != 0)
             {

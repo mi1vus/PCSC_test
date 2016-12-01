@@ -77,7 +77,7 @@ namespace MiFare.Classic
                 storage = LoadKeys.LoadKeysStorageType.Volatile;
                 System.Windows.Forms.MessageBox.Show("1251");
             }
-
+                           
             var keyTypeToUse = key;
             byte[] keyToUse;
 
@@ -117,7 +117,7 @@ namespace MiFare.Classic
                 nextKeySlot++;
                 keyToLocationMap[keyToUse] = location;
 
-                //Load the key to the location
+                // Load the key to the location
                 var r = await TransceiveAsync(new LoadKey(keyToUse, location, storage));
                 if (!r.Succeeded)
                     return false; // could not load the key

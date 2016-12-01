@@ -5,7 +5,6 @@ using MiFare.PcSc;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -28,72 +27,139 @@ namespace PC_SC_Driver
         private readonly byte[] _keyMultiKeyB = { 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5 };
 
         private static HashSet<Tuple<int, int>> _cardBadSectors = null;
-
+        private static readonly string[,] EmptyCard =
+        {
+            {"",
+             "00000000000000000000000000000000", // 1
+             "00000000000000000000000000000000", // 2
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 4
+             "00000000000000000000000000000000", // 5
+             "00000000000000000000000000000000", // 6
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 8
+             "00000000000000000000000000000000", // 9
+             "00000000000000000000000000000000", // 10
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 12
+             "00000000000000000000000000000000", // 13
+             "00000000000000000000000000000000", // 14
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 16
+             "00000000000000000000000000000000", // 17
+             "00000000000000000000000000000000", // 18
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 20
+             "00000000000000000000000000000000", // 21
+             "00000000000000000000000000000000", // 22
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 24
+             "00000000000000000000000000000000", // 25
+             "00000000000000000000000000000000", // 26
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 28
+             "00000000000000000000000000000000", // 29
+             "00000000000000000000000000000000", // 30
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 32
+             "00000000000000000000000000000000", // 33
+             "00000000000000000000000000000000", // 34
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 36
+             "00000000000000000000000000000000", // 37
+             "00000000000000000000000000000000", // 38
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 40
+             "00000000000000000000000000000000", // 41
+             "00000000000000000000000000000000", // 42
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 44
+             "00000000000000000000000000000000", // 45
+             "00000000000000000000000000000000", // 46
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 48
+             "00000000000000000000000000000000", // 49
+             "00000000000000000000000000000000", // 50
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 52
+             "00000000000000000000000000000000", // 53
+             "00000000000000000000000000000000", // 54
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 56
+             "00000000000000000000000000000000", // 57
+             "00000000000000000000000000000000", // 58
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 60
+             "00000000000000000000000000000000", // 61
+             "00000000000000000000000000000000", // 62
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"}
+        };
         private static readonly string[,] TestCard =
         {
-            {""},
-            {"00000000000000000000000000000000"}, // 1
-            {"00000000000000000000000000000000"}, // 2
-            {""},
-            {"30303030303100000000000000000000"}, // 4
-            {"00000000000100000002000000DD0002"}, // 5
-            {"4A8CEE9713D5E4400000000000000000"}, // 6
-            {""},
-            {"00000000000000000000000000000000"}, // 8
-            {"E8030000C409000088130000FF014300"}, // 9
-            {"00000000000000000000000000000000"}, // 10
-            {""},
-            {"00000000000000000000000000000000"}, // 12
-            {"00000000000000000000000000000000"}, // 13
-            {"00000000000000000000000000000000"}, // 14
-            {""},
-            {"00000000000000000000000000000000"}, // 16
-            {"E8030000C409000088130000FF024000"}, // 17
-            {"00000000000000000000000000000000"}, // 18
-            {""},
-            {"00000000000000000000000000000000"}, // 20
-            {"00000000000000000000000000000000"}, // 21
-            {"00000000000000000000000000000000"}, // 22
-            {""},
-            {"00000000000000000000000000000000"}, // 24
-            {"E8030000C409000088130000FF034100"}, // 25
-            {"00000000000000000000000000000000"}, // 26
-            {""},
-            {"00000000000000000000000000000000"}, // 28
-            {"00000000000000000000000000000000"}, // 29
-            {"00000000000000000000000000000000"}, // 30
-            {""},
-            {"00000000000000000000000000000000"}, // 32
-            {"E8030000C409000088130000FF044600"}, // 33
-            {"00000000000000000000000000000000"}, // 34
-            {""},
-            {"00000000000000000000000000000000"}, // 36
-            {"00000000000000000000000000000000"}, // 37
-            {"00000000000000000000000000000000"}, // 38
-            {""},
-            {"00000000000000000000000000000000"}, // 40
-            {"E8030000C409000088130000FF054700"}, // 41
-            {"00000000000000000000000000000000"}, // 42
-            {""},
-            {"00000000000000000000000000000000"}, // 44
-            {"00000000000000000000000000000000"}, // 45
-            {"00000000000000000000000000000000"}, // 46
-            {""},
-            {"00000000000000000000000000000000"}, // 48
-            {"E8030000C409000088130000FF064400"}, // 49
-            {"00000000000000000000000000000000"}, // 50
-            {""},
-            {"00000000000000000000000000000000"}, // 52
-            {"00000000000000000000000000000000"}, // 53
-            {"00000000000000000000000000000000"}, // 54
-            {""},
-            {"9EFBFFFF620400006204000062040000"}, // 56
-            {"A086010090D0030020A10700FF07E400"}, // 57
-            {"E078C7C013D5E4400000000000000000"}, // 58
-            {""},
-            {"00000000000000000000000000000000"}, // 60
-            {"00000000000000000000000000000000"}, // 61
-            {"00000000000000000000000000000000"} // 62
+            {"",
+             "00000000000000000000000000000000", // 1
+             "00000000000000000000000000000000", // 2
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"31313431373334323237000000000000", // 4
+             "0000000000E803000001000000760006", // 5
+             "E7E62FDC14DAE4400000000000000000", // 6
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 8
+             "E8030000C409000088130000FF014300", // 9
+             "00000000000000000000000000000000", // 10
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 12
+             "00000000000000000000000000000000", // 13
+             "00000000000000000000000000000000", // 14
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 16
+             "00000000000000000000000000000000", // 17
+             "00000000000000000000000000000000", // 18
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 20
+             "00000000000000000000000000000000", // 21
+             "00000000000000000000000000000000", // 22
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 24
+             "00000000000000000000000000000000", // 25
+             "00000000000000000000000000000000", // 26
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 28
+             "00000000000000000000000000000000", // 29
+             "00000000000000000000000000000000", // 30
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 32
+             "00000000000000000000000000000000", // 33
+             "00000000000000000000000000000000", // 34
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 36
+             "00000000000000000000000000000000", // 37
+             "00000000000000000000000000000000", // 38
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 40
+             "00000000000000000000000000000000", // 41
+             "00000000000000000000000000000000", // 42
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 44
+             "00000000000000000000000000000000", // 45
+             "00000000000000000000000000000000", // 46
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 48
+             "00000000000000000000000000000000", // 49
+             "00000000000000000000000000000000", // 50
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 52
+             "00000000000000000000000000000000", // 53
+             "00000000000000000000000000000000", // 54
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 56
+             "00000000000000000000000000000000", // 57
+             "00000000000000000000000000000000", // 58
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
+            {"00000000000000000000000000000000", // 60
+             "00000000000000000000000000000000", // 61
+             "00000000000000000000000000000000", // 62
+             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"}
         };
 
         public Form1()
@@ -235,7 +301,7 @@ namespace PC_SC_Driver
                                 //var sec = localCard.GetSector(1);
                                 //var d = await sec.GetData(0);
                                 var data = new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
+                                AccessConditions access = null;
                                 if (card_1_key)
                                 {
                                     if (sector == 1)
@@ -262,25 +328,41 @@ namespace PC_SC_Driver
                                     //        Key = _key1Key
                                     //    });
                                     //else
-                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet
-                                        {
-                                            KeyType = KeyType.KeyB,
-                                            Sector = sector,
-                                            Key = _keyMultiKeyB
-                                        });
-
-                                    if (sector == 2)
+                                    //localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                                    //{
+                                    //    KeyType = KeyType.KeyA,
+                                    //    Sector = sector,
+                                    //    Key = _keyMultiKeyA
+                                    //});
+                                    localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                                    {
+                                        KeyType = KeyType.KeyB,
+                                        Sector = sector,
+                                        Key = _keyMultiKeyB
+                                    });
+                                    if (_cardBadSectors?.Contains(new Tuple<int, int>(sector, block)) ?? false)
                                         data = ReadFromFileSector(sector, block);
                                     else
                                     {
                                         var sec = localCard.GetSector(sector);
                                         data = await sec.GetData(block);
+
+                                        if (data != null && block == sec.NumDataBlocks - 1)
+                                            access = AccessBits.GetAccessConditions(data);
+                                        else
+                                            access = null;
                                     }
                                 }
                                 //else
                                 //{
                                 //    continue;
                                 //}
+
+                                if (data == null)
+                                {
+                                    AddText($"Sector '{sector}'[{block}]: read error!");
+                                    return;
+                                }
 
                                 string hexString = "|| ";
                                 for (int i = 0; i < data.Length; i++)
@@ -292,6 +374,18 @@ namespace PC_SC_Driver
                                 hexString += " ||";
 
                                 AddText($"Sector '{sector}'[{block}]:{hexString}");
+
+                                if (access != null)
+                                {
+                                    string accStr = $"Access d0: read - {access.DataAreas[0].Read}, write - {access.DataAreas[0].Read}, decr - {access.DataAreas[0].Decrement}, incr - {access.DataAreas[0].Increment}";
+                                    AddText(accStr);
+                                    accStr = $"Access d1: read - {access.DataAreas[1].Read}, write - {access.DataAreas[1].Read}, decr - {access.DataAreas[1].Decrement}, incr - {access.DataAreas[1].Increment}";
+                                    AddText(accStr);
+                                    accStr = $"Access d2: read - {access.DataAreas[2].Read}, write - {access.DataAreas[2].Read}, decr - {access.DataAreas[2].Decrement}, incr - {access.DataAreas[2].Increment}";
+                                    AddText(accStr);
+                                    accStr = $"Trailer : Acc read - {access.Trailer.AccessBitsRead}, Acc write - {access.Trailer.AccessBitsWrite}, A read - {access.Trailer.KeyARead}, A write - {access.Trailer.KeyAWrite}, B read - {access.Trailer.KeyBRead}, B write - {access.Trailer.KeyBWrite}";
+                                    AddText(accStr);
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -301,12 +395,10 @@ namespace PC_SC_Driver
                     }
                     AddText("=========================================================");
                 }
-                return;
             }
             catch (Exception ex)
             {
                 AddText("reRead HandleCard Exception: " + ex.Message);
-                return;
             }
         }
 
@@ -682,10 +774,31 @@ namespace PC_SC_Driver
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void useAPI_Click(object sender, EventArgs e)
         {
-            writeFromA();
+            var info = ServioBonus.ServioCardsShell.ReadCardNumber();
+            if (info.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+                MessageBox.Show(info.IssuerID + "/" + info.CardNumber);
+            else
+                MessageBox.Show("Ошибка карты: " + info.ErrorCore);
         }
+        private void readAPI_Click(object sender, EventArgs e)
+        {
+            var res = ServioBonus.ServioCardsShell.GetCard();
+
+            if (res == null)
+                AddText("read error");
+
+            for (int i = 0; i < res?.Length / 16; ++i)
+            {
+                int size = Math.Min(res.Length - i * 16, 16);
+                byte[] block = new byte[size];
+
+                Array.Copy(res, i * 16, block, 0, size);
+                AddText($"read block [{i}]:\t{BitConverter.ToString(block)}");
+            }
+        }
+
         private async void writeFromA()
         {
             if (localCard == null)
@@ -745,12 +858,23 @@ namespace PC_SC_Driver
 
         private void btn_erase_Click(object sender, EventArgs e)
         {
-            erase();
-        }
-        private async void erase()
-        {
-            if (localCard == null)
+            if (localCard == null || card == null)
                 return;
+
+            WriteCard(EmptyCard);
+        }
+        private void button_writeTest_Click(object sender, EventArgs e)
+        {
+            if (localCard == null || card == null)
+                return;
+
+            WriteCard(TestCard);
+        }
+
+        private async Task<int> WriteCard(string[,] src_card)
+        {
+            if (src_card == null)
+                return -1;
 
             try
             {
@@ -769,100 +893,91 @@ namespace PC_SC_Driver
                     var uid = await localCard.GetUid();
                     AddText("UID:  " + BitConverter.ToString(uid));
 
-                    AddText("Write to sector 3[0] - 012345");
+                    AddText("WRITE ALL CARD");
 
                     bool card1Key = uid[0] == 0xBC;
 
                     // 16 sectors, print out each one
-                    for (var sector = 0; sector < 16 && card != null; sector++)
+                    for (var sector = 0; sector < src_card.GetLength(0); sector++)
                     {
                         AddText("=========================================================");
-                        for (var block = 0; block < 4; block++)
+                        for (var block = 0; block < src_card.GetLength(1); block++)
                         {
+                            if (sector == 0 && block == 0)
+                                continue;
+
                             try
                             {
                                 if (card1Key)
                                 {
                                     if (sector == 1)
-                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet{KeyType = KeyType.KeyB,Sector = sector,Key = _keyNull });
-
-                                    var sec = localCard.GetSector(sector);
-                                    await sec.SetData(new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, block);
-                                    await sec.Flush();
+                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                                        {
+                                            KeyType = KeyType.KeyB,
+                                            Sector = sector,
+                                            Key = _keyNull
+                                        });
                                 }
                                 else
                                 {
-                                    if (sector == 0 && block == 0)
-                                        continue;
-                                    
-                                        //if (sector == 0)
-                                        //    localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyB, Sector = sector, Key = _keyMultiKeyB });
-                                        //else
-                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyB, Sector = sector, Key = _keyMultiKeyB });
-
-                                    var sec = localCard.GetSector(sector);
-
-                                    //TODO убрать
-                                    if (_cardBadSectors?.Contains(new Tuple<int, int>(sector, block)) ?? false)
+                                    //if (sector == 0)
+                                    //    localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyB, Sector = sector, Key = _keyMultiKeyB });
+                                    //else
+                                    localCard.AddOrUpdateSectorKeySet(new SectorKeySet
                                     {
-                                        var dataR = new byte[16];
-                                        if (block == sec.NumDataBlocks - 1)
-                                            dataR = new byte[] { 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xFF, 0x07, 0x80, 0x00, 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5 };
-                                        else
-                                            dataR = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                                        KeyType = KeyType.KeyB,
+                                        Sector = sector,
+                                        Key = _keyMultiKeyB
+                                    });
+                                }
 
-                                        WriteOrReplaceToFileSector(sector, block, dataR);
-                                        string hexStringR = "|| ";
-                                        for (int i = 0; i < dataR.Length; i++)
-                                        {
-                                            if (i == 6 || i == 10)
-                                                hexStringR += " || ";
-                                            hexStringR += dataR[i].ToString("X2") + " ";
-                                        }
-                                        hexStringR += " ||";
+                                var dataSrc = src_card[sector, block].StringToByteArray();
 
-                                        AddText($"Sector '{sector}'[{block}]:{hexStringR}");
-                                        continue;
-                                    }
-
+                                //TODO убрать
+                                if (_cardBadSectors?.Contains(new Tuple<int, int>(sector, block)) ?? false)
+                                {
+                                    WriteOrReplaceToFileSector(sector, block, dataSrc);
+                                }
+                                else
+                                {
+                                    var sec = localCard.GetSector(sector);
                                     if (block == sec.NumDataBlocks - 1)
                                     {
-                                        var accData = new byte[] {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xFF, 0x07, 0x80, 0x00, 0xB0, 0xB1,0xB2, 0xB3, 0xB4, 0xB5};
-                                        var access = AccessBits.GetAccessConditions(accData);
+                                        var access = AccessBits.GetAccessConditions(dataSrc);
                                         sec.Access.DataAreas[0] = access.DataAreas[0];
                                         sec.Access.DataAreas[1] = access.DataAreas[1];
                                         sec.Access.DataAreas[2] = access.DataAreas[2];
                                         sec.Access.Trailer = access.Trailer;
                                         byte[] keyAData = new byte[6];
                                         byte[] keyBData = new byte[6];
-                                        Array.Copy(accData, 0, keyAData, 0, 6);
-                                        Array.Copy(accData, 10, keyBData, 0, 6);
+                                        Array.Copy(dataSrc, 0, keyAData, 0, 6);
+                                        Array.Copy(dataSrc, 10, keyBData, 0, 6);
                                         sec.KeyA = keyAData.ByteArrayToString();
                                         sec.KeyB = keyBData.ByteArrayToString();
                                     }
                                     else
-                                        await sec.SetData(new byte[]{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00, 0x00, 0x00}, block);
+                                        await sec.SetData(dataSrc, block);
 
                                     await sec.Flush();
                                     if (block == sec.NumDataBlocks - 1)
                                     {
-                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet{KeyType = KeyType.KeyB,Sector = sector,Key = _keyMultiKeyB});
-                                        await sec.FlushTrailer(_keyMultiKeyA.ByteArrayToString(),_keyMultiKeyB.ByteArrayToString());
+                                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                                        {
+                                            KeyType = KeyType.KeyB,
+                                            Sector = sector,
+                                            Key = _keyMultiKeyB
+                                        });
+                                        await
+                                            sec.FlushTrailer(_keyMultiKeyA.ByteArrayToString(),
+                                                _keyMultiKeyB.ByteArrayToString());
                                     }
                                 }
-
-                                var data = new byte[16];
-                                if (block == 3)
-                                    data = new byte[]{0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xFF, 0x07, 0x80, 0x00, 0xB0, 0xB1, 0xB2,0xB3, 0xB4, 0xB5};
-                                else
-                                    data = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0x00};
-
                                 string hexString = "|| ";
-                                for (int i = 0; i < data.Length; i++)
+                                for (int i = 0; i < dataSrc.Length; i++)
                                 {
                                     if (i == 6 || i == 10)
                                         hexString += " || ";
-                                    hexString += data[i].ToString("X2") + " ";
+                                    hexString += dataSrc[i].ToString("X2") + " ";
                                 }
                                 hexString += " ||";
 
@@ -876,11 +991,12 @@ namespace PC_SC_Driver
                     }
                     AddText("=========================================================");
                 }
+                return 0;
             }
             catch (Exception ex)
             {
                 AddText("writeFromB HandleCard Exception: " + ex.ToString());
-                return;
+                return -1;
             }
         }
 
@@ -898,7 +1014,7 @@ namespace PC_SC_Driver
             if (uid == null)
                 throw new Exception("Попытка записи данных в неинициализированную карты");
 
-            string path = @"C:\MifareServio\Out\file_sector_" + uid.ByteArrayToString() + ".dat";
+            string path = @"Out\file_sector_" + uid.ByteArrayToString() + ".dat";
             // This text is added only once to the file.
             if (!File.Exists(path))
             {
@@ -937,7 +1053,7 @@ namespace PC_SC_Driver
             if (uid == null)
                 throw new Exception("Попытка чтения данных с неинициализированной карты");
 
-            string path = @"C:\MifareServio\Out\file_sector_" + uid.ByteArrayToString() + ".dat";
+            string path = @"Out\file_sector_" + uid.ByteArrayToString() + ".dat";
             var sectors = new Dictionary<Tuple<int, int>, byte[]>();
             if (File.Exists(path))
             {
@@ -978,7 +1094,7 @@ namespace PC_SC_Driver
             if (uid == null)
                 throw new Exception("Попытка чтения данных с неинициализированной карты");
 
-            string path = @"C:\MifareServio\Out\file_sector_" + uid.ByteArrayToString() + ".dat";
+            string path = @"Out\file_sector_" + uid.ByteArrayToString() + ".dat";
 
             var result = new HashSet<Tuple<int, int>>();
 

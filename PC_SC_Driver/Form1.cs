@@ -20,12 +20,15 @@ namespace PC_SC_Driver
         private MiFareCard card;
         private MiFareCard localCard;
 
+        #region Keys
         private readonly byte[] _keyNull      = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
         private readonly byte[] _key1Key      = { 0x27, 0xA2, 0x9C, 0x10, 0xF8, 0xC7 };
         private readonly byte[] _keyDefault   = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
         private readonly byte[] _keyMultiKeyA = { 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5 };
         private readonly byte[] _keyMultiKeyB = { 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5 };
+        #endregion
 
+        #region Kards
         private static HashSet<Tuple<int, int>> _cardBadSectors = null;
         private static readonly string[,] EmptyCard =
         {
@@ -161,6 +164,7 @@ namespace PC_SC_Driver
              "00000000000000000000000000000000", // 62
              "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"}
         };
+        #endregion
 
         public Form1()
         {
@@ -791,6 +795,9 @@ namespace PC_SC_Driver
 
             for (int i = 0; i < res?.Length / 16; ++i)
             {
+                if (i > 63)
+                    break;
+
                 int size = Math.Min(res.Length - i * 16, 16);
                 byte[] block = new byte[size];
 

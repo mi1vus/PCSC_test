@@ -22,7 +22,7 @@ namespace MarshalHelper
             queue.Enqueue(ptr);
         }
 
-        private static void FreeIntPtr(IntPtr ptr)
+        public static void FreeIntPtr(IntPtr ptr)
         {
             if (ptr != IntPtr.Zero)
                 Marshal.FreeCoTaskMem(ptr);

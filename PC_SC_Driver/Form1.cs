@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ServioBonus;
 
 namespace PC_SC_Driver
 {
@@ -21,149 +22,219 @@ namespace PC_SC_Driver
         private MiFareCard localCard;
 
         #region Keys
-        private readonly byte[] _keyNull      = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        private readonly byte[] _key1Key      = { 0x27, 0xA2, 0x9C, 0x10, 0xF8, 0xC7 };
-        private readonly byte[] _keyDefault   = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-        private readonly byte[] _keyMultiKeyA = { 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5 };
-        private readonly byte[] _keyMultiKeyB = { 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5 };
+
+        private readonly byte[] _keyNull = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        private readonly byte[] _key1Key = {0x27, 0xA2, 0x9C, 0x10, 0xF8, 0xC7};
+        private readonly byte[] _keyDefault = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+        private readonly byte[] _keyMultiKeyA = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5};
+        private readonly byte[] _keyMultiKeyB = {0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5};
+
         #endregion
 
         #region Kards
+
         private static HashSet<Tuple<int, int>> _cardBadSectors = null;
+
         private static readonly string[,] EmptyCard =
         {
-            {"",
-             "00000000000000000000000000000000", // 1
-             "00000000000000000000000000000000", // 2
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 4
-             "00000000000000000000000000000000", // 5
-             "00000000000000000000000000000000", // 6
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 8
-             "00000000000000000000000000000000", // 9
-             "00000000000000000000000000000000", // 10
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 12
-             "00000000000000000000000000000000", // 13
-             "00000000000000000000000000000000", // 14
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 16
-             "00000000000000000000000000000000", // 17
-             "00000000000000000000000000000000", // 18
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 20
-             "00000000000000000000000000000000", // 21
-             "00000000000000000000000000000000", // 22
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 24
-             "00000000000000000000000000000000", // 25
-             "00000000000000000000000000000000", // 26
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 28
-             "00000000000000000000000000000000", // 29
-             "00000000000000000000000000000000", // 30
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 32
-             "00000000000000000000000000000000", // 33
-             "00000000000000000000000000000000", // 34
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 36
-             "00000000000000000000000000000000", // 37
-             "00000000000000000000000000000000", // 38
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 40
-             "00000000000000000000000000000000", // 41
-             "00000000000000000000000000000000", // 42
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 44
-             "00000000000000000000000000000000", // 45
-             "00000000000000000000000000000000", // 46
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 48
-             "00000000000000000000000000000000", // 49
-             "00000000000000000000000000000000", // 50
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 52
-             "00000000000000000000000000000000", // 53
-             "00000000000000000000000000000000", // 54
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 56
-             "00000000000000000000000000000000", // 57
-             "00000000000000000000000000000000", // 58
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 60
-             "00000000000000000000000000000000", // 61
-             "00000000000000000000000000000000", // 62
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"}
+            {
+                "",
+                "00000000000000000000000000000000", // 1
+                "00000000000000000000000000000000", // 2
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 4
+                "00000000000000000000000000000000", // 5
+                "00000000000000000000000000000000", // 6
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 8
+                "00000000000000000000000000000000", // 9
+                "00000000000000000000000000000000", // 10
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 12
+                "00000000000000000000000000000000", // 13
+                "00000000000000000000000000000000", // 14
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 16
+                "00000000000000000000000000000000", // 17
+                "00000000000000000000000000000000", // 18
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 20
+                "00000000000000000000000000000000", // 21
+                "00000000000000000000000000000000", // 22
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 24
+                "00000000000000000000000000000000", // 25
+                "00000000000000000000000000000000", // 26
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 28
+                "00000000000000000000000000000000", // 29
+                "00000000000000000000000000000000", // 30
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 32
+                "00000000000000000000000000000000", // 33
+                "00000000000000000000000000000000", // 34
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 36
+                "00000000000000000000000000000000", // 37
+                "00000000000000000000000000000000", // 38
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 40
+                "00000000000000000000000000000000", // 41
+                "00000000000000000000000000000000", // 42
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 44
+                "00000000000000000000000000000000", // 45
+                "00000000000000000000000000000000", // 46
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 48
+                "00000000000000000000000000000000", // 49
+                "00000000000000000000000000000000", // 50
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 52
+                "00000000000000000000000000000000", // 53
+                "00000000000000000000000000000000", // 54
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 56
+                "00000000000000000000000000000000", // 57
+                "00000000000000000000000000000000", // 58
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 60
+                "00000000000000000000000000000000", // 61
+                "00000000000000000000000000000000", // 62
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            }
         };
+
         private static readonly string[,] TestCard =
         {
-            {"",
-             "00000000000000000000000000000000", // 1
-             "00000000000000000000000000000000", // 2
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"31313431373334323237000000000000", // 4
-             "0000000000E803000001000000760006", // 5
-             "E7E62FDC14DAE4400000000000000000", // 6
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 8
-             "E8030000C409000088130000FF014300", // 9
-             "00000000000000000000000000000000", // 10
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 12
-             "00000000000000000000000000000000", // 13
-             "00000000000000000000000000000000", // 14
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 16
-             "00000000000000000000000000000000", // 17
-             "00000000000000000000000000000000", // 18
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 20
-             "00000000000000000000000000000000", // 21
-             "00000000000000000000000000000000", // 22
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 24
-             "00000000000000000000000000000000", // 25
-             "00000000000000000000000000000000", // 26
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 28
-             "00000000000000000000000000000000", // 29
-             "00000000000000000000000000000000", // 30
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 32
-             "00000000000000000000000000000000", // 33
-             "00000000000000000000000000000000", // 34
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 36
-             "00000000000000000000000000000000", // 37
-             "00000000000000000000000000000000", // 38
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 40
-             "00000000000000000000000000000000", // 41
-             "00000000000000000000000000000000", // 42
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 44
-             "00000000000000000000000000000000", // 45
-             "00000000000000000000000000000000", // 46
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 48
-             "00000000000000000000000000000000", // 49
-             "00000000000000000000000000000000", // 50
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 52
-             "00000000000000000000000000000000", // 53
-             "00000000000000000000000000000000", // 54
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 56
-             "00000000000000000000000000000000", // 57
-             "00000000000000000000000000000000", // 58
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"},
-            {"00000000000000000000000000000000", // 60
-             "00000000000000000000000000000000", // 61
-             "00000000000000000000000000000000", // 62
-             "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"}
+            {
+                "",
+                "00000000000000000000000000000000", // 1
+                "00000000000000000000000000000000", // 2
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "31313431373334323237000000000000", // 4
+                "0000000000E803000001000000760006", // 5
+                "E7E62FDC14DAE4400000000000000000", // 6
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 8
+                "E8030000C409000088130000FF014300", // 9
+                "00000000000000000000000000000000", // 10
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 12
+                "00000000000000000000000000000000", // 13
+                "00000000000000000000000000000000", // 14
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 16
+                "00000000000000000000000000000000", // 17
+                "00000000000000000000000000000000", // 18
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 20
+                "00000000000000000000000000000000", // 21
+                "00000000000000000000000000000000", // 22
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 24
+                "00000000000000000000000000000000", // 25
+                "00000000000000000000000000000000", // 26
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 28
+                "00000000000000000000000000000000", // 29
+                "00000000000000000000000000000000", // 30
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 32
+                "00000000000000000000000000000000", // 33
+                "00000000000000000000000000000000", // 34
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 36
+                "00000000000000000000000000000000", // 37
+                "00000000000000000000000000000000", // 38
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 40
+                "00000000000000000000000000000000", // 41
+                "00000000000000000000000000000000", // 42
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 44
+                "00000000000000000000000000000000", // 45
+                "00000000000000000000000000000000", // 46
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 48
+                "00000000000000000000000000000000", // 49
+                "00000000000000000000000000000000", // 50
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 52
+                "00000000000000000000000000000000", // 53
+                "00000000000000000000000000000000", // 54
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 56
+                "00000000000000000000000000000000", // 57
+                "00000000000000000000000000000000", // 58
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            },
+            {
+                "00000000000000000000000000000000", // 60
+                "00000000000000000000000000000000", // 61
+                "00000000000000000000000000000000", // 62
+                "A0A1A2A3A4A5FF078000B0B1B2B3B4B5"
+            }
         };
+
         #endregion
 
         public Form1()
@@ -175,7 +246,9 @@ namespace PC_SC_Driver
         {
             var readers = CardReader.GetReaderNames().ToArray();
             comboBox1.Items.AddRange(readers);
-            comboBox1.SelectedIndex = comboBox1.Items.IndexOf(readers.FirstOrDefault(t => t.Contains("CL")) ?? readers.FirstOrDefault(t => t.Contains("PICC")));
+            comboBox1.SelectedIndex =
+                comboBox1.Items.IndexOf(readers.FirstOrDefault(t => t.Contains("CL")) ??
+                                        readers.FirstOrDefault(t => t.Contains("PICC")));
 
             //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!
             connect.PerformClick();
@@ -266,6 +339,7 @@ namespace PC_SC_Driver
         {
             reRead();
         }
+
         private async void reRead()
         {
             if (localCard == null)
@@ -381,13 +455,17 @@ namespace PC_SC_Driver
 
                                 if (access != null)
                                 {
-                                    string accStr = $"Access d0: read - {access.DataAreas[0].Read}, write - {access.DataAreas[0].Read}, decr - {access.DataAreas[0].Decrement}, incr - {access.DataAreas[0].Increment}";
+                                    string accStr =
+                                        $"Access d0: read - {access.DataAreas[0].Read}, write - {access.DataAreas[0].Read}, decr - {access.DataAreas[0].Decrement}, incr - {access.DataAreas[0].Increment}";
                                     AddText(accStr);
-                                    accStr = $"Access d1: read - {access.DataAreas[1].Read}, write - {access.DataAreas[1].Read}, decr - {access.DataAreas[1].Decrement}, incr - {access.DataAreas[1].Increment}";
+                                    accStr =
+                                        $"Access d1: read - {access.DataAreas[1].Read}, write - {access.DataAreas[1].Read}, decr - {access.DataAreas[1].Decrement}, incr - {access.DataAreas[1].Increment}";
                                     AddText(accStr);
-                                    accStr = $"Access d2: read - {access.DataAreas[2].Read}, write - {access.DataAreas[2].Read}, decr - {access.DataAreas[2].Decrement}, incr - {access.DataAreas[2].Increment}";
+                                    accStr =
+                                        $"Access d2: read - {access.DataAreas[2].Read}, write - {access.DataAreas[2].Read}, decr - {access.DataAreas[2].Decrement}, incr - {access.DataAreas[2].Increment}";
                                     AddText(accStr);
-                                    accStr = $"Trailer : Acc read - {access.Trailer.AccessBitsRead}, Acc write - {access.Trailer.AccessBitsWrite}, A read - {access.Trailer.KeyARead}, A write - {access.Trailer.KeyAWrite}, B read - {access.Trailer.KeyBRead}, B write - {access.Trailer.KeyBWrite}";
+                                    accStr =
+                                        $"Trailer : Acc read - {access.Trailer.AccessBitsRead}, Acc write - {access.Trailer.AccessBitsWrite}, A read - {access.Trailer.KeyARead}, A write - {access.Trailer.KeyAWrite}, B read - {access.Trailer.KeyBRead}, B write - {access.Trailer.KeyBWrite}";
                                     AddText(accStr);
                                 }
                             }
@@ -406,10 +484,16 @@ namespace PC_SC_Driver
             }
         }
 
+        private void btn_clear_Click(object sender, EventArgs e)
+        {
+            textBox1.Clear();
+        }
+
         private void btn_onlyRead_Click(object sender, EventArgs e)
         {
             onlyRead();
         }
+
         private async void onlyRead()
         {
             if (localCard == null)
@@ -570,6 +654,7 @@ namespace PC_SC_Driver
         {
             readAndWrite();
         }
+
         private async void readAndWrite()
         {
             if (localCard == null)
@@ -722,6 +807,7 @@ namespace PC_SC_Driver
         {
             writeFromB();
         }
+
         private async void writeFromB()
         {
             if (localCard == null)
@@ -753,25 +839,40 @@ namespace PC_SC_Driver
                     var sector = 3;
                     if (card1Key)
                     {
-                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyB, Sector = sector, Key = _keyDefault });
+                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                        {
+                            KeyType = KeyType.KeyB,
+                            Sector = sector,
+                            Key = _keyDefault
+                        });
 
                         var sec = localCard.GetSector(sector);
-                        await sec.SetData(new byte[] {0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x05/*, 0x06/*, 0x07, 0x00, 0x00*/ }, 0);
+                        await
+                            sec.SetData(
+                                new byte[] {0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x05 /*, 0x06/*, 0x07, 0x00, 0x00*/}, 0);
                         await sec.Flush();
                     }
                     else
                     {
-                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet{KeyType = KeyType.KeyB,Sector = sector,Key = _keyMultiKeyB});
+                        localCard.AddOrUpdateSectorKeySet(new SectorKeySet
+                        {
+                            KeyType = KeyType.KeyB,
+                            Sector = sector,
+                            Key = _keyMultiKeyB
+                        });
 
                         var sec = localCard.GetSector(sector);
-                        await sec.SetData(new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x05/*, 0x06/*, 0x07, 0x00, 0x00*/ }, 0);
+                        await
+                            sec.SetData(
+                                new byte[] {0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x05 /*, 0x06/*, 0x07, 0x00, 0x00*/}, 0);
                         await sec.Flush();
                     }
                     //localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyA, Sector = sector, Key = keyDefault });
                     //localCard.AddOrUpdateSectorKeySet(new SectorKeySet { KeyType = KeyType.KeyB, Sector = sector, Key = keyDefault });
 
                 }
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 AddText("writeFromB HandleCard Exception: " + ex.ToString());
                 return;
@@ -780,18 +881,34 @@ namespace PC_SC_Driver
 
         private void useAPI_Click(object sender, EventArgs e)
         {
-            var info = ServioBonus.ServioCardsShell.ReadCardNumber();
-            if (info.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
-                MessageBox.Show(info.IssuerID + "/" + info.CardNumber);
+            ServioBonus.ServioCardsShell.ServioCardInfo res;
+            try
+            {
+                res = ServioBonus.ServioCardsShell.Authorize();
+            }
+            catch (Exception ex)
+            {
+                AddText(ex.Message);
+                return;
+            }
+            if (res.ErrorCore == (int) CoverConstants.ErrorCodes.E_SUCCESS)
+                AddText("Номер карты: " + res.IssuerID + "/" + res.CardNumber);
             else
-                MessageBox.Show("Ошибка карты: " + info.ErrorCore);
+                AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
         }
         private void readAPI_Click(object sender, EventArgs e)
         {
-            var res = ServioBonus.ServioCardsShell.GetCard();
+            byte[] res;
+            try
+            {
+                res = ServioBonus.ServioCardsShell.GetCard();
+            }
+            catch (Exception ex)
+            {
+                AddText(ex.Message);
+                return;
+            }
 
-            if (res == null)
-                AddText("read error");
 
             for (int i = 0; i < res?.Length / 16; ++i)
             {
@@ -804,6 +921,58 @@ namespace PC_SC_Driver
                 Array.Copy(res, i * 16, block, 0, size);
                 AddText($"read block [{i}]:\t{BitConverter.ToString(block)}");
             }
+        }
+        private void infoAPI_Click(object sender, EventArgs e)
+        {
+            ServioBonus.ServioCardsShell.ServioCardInfo res;
+            try
+            {
+                res = ServioBonus.ServioCardsShell.GetCardInfo();
+            }
+            catch (Exception ex)
+            {
+                AddText(ex.Message);
+                return;
+            }
+
+            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+                AddText("Образ чека:\r\n" + res.CardInfo);
+            else
+                AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
+        }
+        private void saleAPI_Click(object sender, EventArgs e)
+        {
+            ServioCardsShell.ServioCardInfo res;
+            try
+            {
+                var item1 = new ServioCardsShell.TCardOperationItem();
+                item1.GoodKind = (int)CoverConstants.GoodKinds.GK_FUEL;
+                item1.GoodCode = "1"; // Код для устройств
+                item1.GoodName = "АИ-95"; // название
+                item1.FuellingPoint = 1; // ТРК №1
+                item1.OrderUnit = (int)CoverConstants.OrderUnits.UNIT_QUTY;
+                item1.Price = 3.45; // Цена
+                item1.Quantity = 2.49; // Количество
+                var item2 = new ServioCardsShell.TCardOperationItem();
+                item2.GoodKind = (int)CoverConstants.GoodKinds.GK_FUEL;
+                item2.GoodCode = "1"; // Код для устройств
+                item2.GoodName = "АИ-95"; // название
+                item2.FuellingPoint = 2; // ТРК №2
+                item2.OrderUnit = (int)CoverConstants.OrderUnits.UNIT_QUTY;
+                item2.Price = 1.45; // Цена
+                item2.Quantity = 1.49; // Количество
+                res = ServioCardsShell.CardSale(121, new List<ServioCardsShell.TCardOperationItem> { item1/*, item2*/ });
+            }
+            catch (Exception ex)
+            {
+                AddText(ex.Message);
+                return;
+            }
+
+            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+                AddText("Образ чека:\r\n" + res.CardInfo);
+            else
+                AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
         }
 
         private async void writeFromA()
@@ -1130,6 +1299,7 @@ namespace PC_SC_Driver
 
             return result;
         }
+
 
     }
 }

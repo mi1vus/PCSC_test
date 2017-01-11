@@ -961,7 +961,7 @@ namespace PC_SC_Driver
                 item2.OrderUnit = (int)CoverConstants.OrderUnits.UNIT_QUTY;
                 item2.Price = 1.45; // Цена
                 item2.Quantity = 1.49; // Количество
-                res = ServioCardsShell.CardSale(121, new List<ServioCardsShell.TCardOperationItem> { item1/*, item2*/ });
+                res = ServioCardsShell.CardSale(121,  item1);
             }
             catch (Exception ex)
             {

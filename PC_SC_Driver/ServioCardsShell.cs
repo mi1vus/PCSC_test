@@ -1,6 +1,5 @@
 ﻿//using ProjectSummer.Repository;
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.ServiceModel;
 using System.Text;
@@ -176,7 +175,7 @@ namespace ServioBonus
             /// <summary>
             /// Размер структуры
             /// </summary>
-            private int Size => sizeof(TCardOperationItem);
+            public int Size;
             /// <summary>
             /// Тип товара: 0-товары,1-услуги,2-топливо
             /// </summary>
@@ -915,7 +914,7 @@ MarshalHelper.UnMemory<TCardOperation>.SaveInMem(Operation, ref OperationPtr);
         }
 
         // ПРОДАЖА ПО КАРТЕ
-        public static ServioCardInfo CardSale(int transact, List<TCardOperationItem> opItems)
+        public static ServioCardInfo CardSale(int transact, TCardOperationItem opItem)
         {
             ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
@@ -956,23 +955,12 @@ MarshalHelper.UnMemory<TCardOperation>.SaveInMem(Operation, ref OperationPtr);
                 operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
                 operation.CardNumber = ""; // Не указывать !!!
                 operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
-                operation.ItemCount = opItems.Count; // При аутентификации позиции не заполнять.
+                operation.ItemCount = 1; // При аутентификации позиции не заполнять.
 
-                IntPtr ppItem1/* = IntPtr.Zero;*/ = Marshal.AllocHGlobal(sizeof(IntPtr));
-                //IntPtr[] arr = new IntPtr[operation.ItemCount];
-                //IntPtr curr = ppItem1;
-                //for (int i = 0; i < operation.ItemCount; ++i)
-                //{
-                //    IntPtr pItem = Marshal.AllocHGlobal(sizeof(TCardOperationItem));
-                //    MarshalHelper.UnMemory<TCardOperationItem>.SaveInMem(opItems[i], ref pItem);
-                //    arr[i] = pItem;
-                //    MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem, ref curr);
-                //    curr += sizeof(IntPtr);
-                //}
-
-                IntPtr pItem = Marshal.AllocHGlobal(sizeof(TCardOperationItem));
-                MarshalHelper.UnMemory<TCardOperationItem>.SaveInMem(opItems[0], ref pItem);
-                MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem, ref ppItem1);
+                IntPtr pItem1 = Marshal.AllocHGlobal(sizeof(TCardOperationItem));
+                MarshalHelper.UnMemory<TCardOperationItem>.SaveInMem(opItem, ref pItem1);
+                IntPtr ppItem1 = Marshal.AllocHGlobal(sizeof(IntPtr));
+                MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
 
                 operation.Items = ppItem1;
 

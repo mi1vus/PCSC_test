@@ -4,13 +4,11 @@ using MiFare.Devices;
 using MiFare.PcSc;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CoverConstants;
 using ServioBonus;
 
 namespace PC_SC_Driver
@@ -940,28 +938,59 @@ namespace PC_SC_Driver
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
         }
-        private void saleAPI_Click(object sender, EventArgs e)
+        private void sale_return_API_Click(object sender, EventArgs e)
         {
             ServioCardsShell.ServioCardInfo res;
             try
             {
-                var item1 = new ServioCardsShell.TCardOperationItem();
-                item1.GoodKind = (int)CoverConstants.GoodKinds.GK_FUEL;
+                var item1 = new ServioCardsShell.CardOperationItem();
+                item1.GoodKind = (int)CoverConstants.GoodKind.GK_FUEL;
                 item1.GoodCode = "1"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
-                item1.FuellingPoint = 1; // ТРК №1
-                item1.OrderUnit = (int)CoverConstants.OrderUnits.UNIT_QUTY;
-                item1.Price = 3.45; // Цена
-                item1.Quantity = 2.49; // Количество
-                var item2 = new ServioCardsShell.TCardOperationItem();
-                item2.GoodKind = (int)CoverConstants.GoodKinds.GK_FUEL;
-                item2.GoodCode = "1"; // Код для устройств
-                item2.GoodName = "АИ-95"; // название
-                item2.FuellingPoint = 2; // ТРК №2
-                item2.OrderUnit = (int)CoverConstants.OrderUnits.UNIT_QUTY;
-                item2.Price = 1.45; // Цена
-                item2.Quantity = 1.49; // Количество
-                res = ServioCardsShell.CardSale(121,  item1);
+                item1.FuellingPoint = 2; // ТРК №1
+                item1.OrderUnit = (int)CoverConstants.OrderUnit.UNIT_QUTY;
+                item1.Price = 5; // Цена
+                item1.Quantity = 2; // Количество
+                res = ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 121,  item1);
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
+                //item1.Quantity -= 1; // Количество
+                //res += ServioCardsShell.CardOperationExecute(CardOperationType.Refund, 2, 123, item1);
+            }
+            catch (Exception ex)
+            {
+                AddText(ex.Message);
+                return;
+            }
+
+            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+                AddText("Образ чека:\r\n" + res.CardInfo);
+            else
+                AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
+        }
+        private void credit_API_Click(object sender, EventArgs e)
+        {
+            ServioCardsShell.ServioCardInfo res;
+            try
+            {
+                var item1 = new ServioCardsShell.CardOperationItem();
+                item1.GoodKind = (int)CoverConstants.GoodKind.GK_FUEL;
+                item1.GoodCode = "1"; // Код для устройств
+                item1.GoodName = "АИ-95"; // название
+                item1.FuellingPoint = 2; // ТРК №1
+                item1.OrderUnit = (int)CoverConstants.OrderUnit.UNIT_QUTY;
+                item1.Price = 5; // Цена
+                item1.Quantity = 4; // Количество
+                res = ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 1, 121, item1);
+                item1.GoodCode = "2"; // Код для устройств
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 2, 122, item1);
+                item1.GoodCode = "3"; // Код для устройств
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 1, 123, item1);
+                item1.GoodCode = "4"; // Код для устройств
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 2, 124, item1);
+                item1.GoodCode = "5"; // Код для устройств
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 1, 125, item1);
+                item1.GoodCode = "6"; // Код для устройств
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 2, 126, item1);
             }
             catch (Exception ex)
             {

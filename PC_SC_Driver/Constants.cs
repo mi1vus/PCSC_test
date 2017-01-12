@@ -126,50 +126,135 @@ namespace CoverConstants
         Месячный_лимит_на_карте_больше_ожидаемого_ = 532, // !
     }
 
-    public enum OpCodes : byte
+    public enum OpCode: byte
     {
-        OP_AUTHORIZATION    = 0x00, // авторизации
-        OP_GET_ORDER        = 0x01, // получение заказа
-        OP_DEBIT            = 0x02, // дебет  (заказанное или фактическое значение)
-        OP_CREDIT           = 0x03, // кредит (пополнение кошелька)
-        OP_ANNULATE         = 0x04, // полный возврат (заказанное или фактическое значение)
-        OP_REFUND           = 0x05, // возврат (заказанное значение - фактическое значение)
-        OP_CALCULATE        = 0x06, // расчет новых значений цены и суммы (заказанное или фактическое значение)
-        OP_CANCELCALC       = 0x07, // полная отмена расчета (заказанное или фактическое значение)
-        OP_RECALC           = 0x08, // пересчет (фактическое значение)
-        OP_END_TRANS        = 0x09, // конец транзакции
-        OP_CANCEL_TRANS     = 0x0A, // отмена транзакции
-        OP_CHECKBALANCE     = 0x0B, // Проверка баланса
-        OP_UNCLAIMEDREFUND  = 0x0C, // невостребованный возврат
-        OP_SELECT_OSNOVAN   = 0x0D // Выбор основания
+        /// <summary>
+        /// // авторизации 
+        /// </summary>
+        OP_AUTHORIZATION    = 0x00,
+        /// <summary>
+        /// // получение заказа 
+        /// </summary>
+        OP_GET_ORDER        = 0x01,
+        /// <summary>
+        /// // дебет  (заказанное или фактическое значение) 
+        /// </summary>
+        OP_DEBIT            = 0x02,
+        /// <summary>
+        /// // кредит (пополнение кошелька) 
+        /// </summary>
+        OP_CREDIT           = 0x03,
+        /// <summary>
+        /// // полный возврат (заказанное или фактическое значение) 
+        /// </summary>
+        OP_ANNULATE         = 0x04,
+        /// <summary>
+        /// // возврат (заказанное значение - фактическое значение) 
+        /// </summary>
+        OP_REFUND           = 0x05,
+        /// <summary>
+        /// // расчет новых значений цены и суммы (заказанное или фактическое значение) 
+        /// </summary>
+        OP_CALCULATE        = 0x06,
+        /// <summary>
+        /// // полная отмена расчета (заказанное или фактическое значение) 
+        /// </summary>
+        OP_CANCELCALC       = 0x07,
+        /// <summary>
+        /// // пересчет (фактическое значение) 
+        /// </summary>
+        OP_RECALC           = 0x08,
+        /// <summary>
+        /// // конец транзакции 
+        /// </summary>
+        OP_END_TRANS        = 0x09,
+        /// <summary>
+        /// // отмена транзакции 
+        /// </summary>
+        OP_CANCEL_TRANS     = 0x0A,
+        /// <summary>
+        /// // Проверка баланса 
+        /// </summary>
+        OP_CHECKBALANCE     = 0x0B,
+        /// <summary>
+        /// // невостребованный возврат 
+        /// </summary>
+        OP_UNCLAIMEDREFUND  = 0x0C,
+        /// <summary>
+        /// // Выбор основания 
+        /// </summary>
+        OP_SELECT_OSNOVAN   = 0x0D
     }
 
-    public enum CardTypes
+    public enum CardType
     {
         // Типы карт
-        UNKNOWN                       = -1, // Неизвестный тип
-        CT_PAYMENT			          = 0, 	// Платежные карты
-        CT_LOYALTY			          = 1, 	// Карты лояльности
-        CT_IDENTIFIER_AUTHORIZATION	  = 2, 	// Карты-идентификаторы (Авторизация)
-        CT_IDENTIFIER_CALCULATE_DEBIT = 3, 	// Карты-идентификаторы (Расчет/оплата)
-        CT_SIMPLE_CARDS               = 100 // ISO7811
-
-
+        /// <summary>
+        /// // Неизвестный тип 
+        /// </summary>
+        UNKNOWN                       = -1,
+        /// <summary>
+        ///  // Платежные карты 
+        /// </summary>
+        CT_PAYMENT			          = 0,
+        /// <summary>
+        ///  // Карты лояльности 
+        /// </summary>
+        CT_LOYALTY			          = 1,
+        /// <summary>
+        ///  // Карты-идентификаторы (Авторизация) 
+        /// </summary>
+        CT_IDENTIFIER_AUTHORIZATION	  = 2,
+        /// <summary>
+        ///  // Карты-идентификаторы (Расчет/оплата) 
+        /// </summary>
+        CT_IDENTIFIER_CALCULATE_DEBIT = 3,
+        /// <summary>
+        /// // ISO7811 
+        /// </summary>
+        CT_SIMPLE_CARDS               = 100
     }
 
-    public enum GoodKinds
+    public enum GoodKind
     {
         // GoodKinds
-        GK_GOOD		= 0, // Товар
-        GK_SERVICE	= 1, // Услуга
-        GK_FUEL		= 2, // Топливо
-        GK_GROUP	= 3, // Группа
+        /// <summary>
+        /// // Товар 
+        /// </summary>
+        GK_GOOD		= 0,
+        /// <summary>
+        /// // Услуга 
+        /// </summary>
+        GK_SERVICE	= 1,
+        /// <summary>
+        /// // Топливо 
+        /// </summary>
+        GK_FUEL		= 2,
+        /// <summary>
+        /// // Группа 
+        /// </summary>
+        GK_GROUP	= 3,
     }
 
-    public enum OrderUnits
+    public enum OrderUnit
     {
         // OrderUnit, UnitID
-        UNIT_QUTY	= 0, //кол-во единиц измерения (литры)
-        UNIT_MONEY	= 1 //на сумму нац. вылюты
+        /// <summary>
+        /// //кол-во единиц измерения (литры) 
+        /// </summary>
+        UNIT_QUTY	= 0,
+        /// <summary>
+        /// //на сумму нац. вылюты 
+        /// </summary>
+        UNIT_MONEY	= 1
+    }
+
+    public enum CardOperationType
+    {
+        Sale = 1,
+        Return = 2,
+        Refund = 3,
+        Credit = 4,
+        Debit = 5
     }
 }

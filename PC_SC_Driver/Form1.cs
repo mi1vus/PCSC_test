@@ -249,7 +249,7 @@ namespace PC_SC_Driver
                                         readers.FirstOrDefault(t => t.Contains("PICC")));
 
             //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!
-            connect.PerformClick();
+            //connect.PerformClick();
         }
 
         private async void connect_Click(object sender, EventArgs e)
@@ -306,9 +306,9 @@ namespace PC_SC_Driver
 
         private void AddText(string Text)
         {
-            if (this.InvokeRequired)
+            if (InvokeRequired)
             {
-                this.Invoke(new AddTextDelegate(AddText), Text);
+                Invoke(new AddTextDelegate(AddText), Text);
             }
             else
             {
@@ -352,7 +352,7 @@ namespace PC_SC_Driver
                 AddText("Connected to card\r\nPC/SC device class: " + cardIdentification.PcscDeviceClass.ToString() +
                         "\r\nCard name: " + cardIdentification.PcscCardName.ToString());
 
-                if (cardIdentification.PcscDeviceClass == MiFare.PcSc.DeviceClass.StorageClass
+                if (cardIdentification.PcscDeviceClass == DeviceClass.StorageClass
                     &&
                     (cardIdentification.PcscCardName == CardName.MifareStandard1K ||
                      cardIdentification.PcscCardName == CardName.MifareStandard4K))
@@ -504,7 +504,7 @@ namespace PC_SC_Driver
                 AddText("Connected to card\r\nPC/SC device class: " + cardIdentification.PcscDeviceClass.ToString() +
                         "\r\nCard name: " + cardIdentification.PcscCardName.ToString());
 
-                if (cardIdentification.PcscDeviceClass == MiFare.PcSc.DeviceClass.StorageClass &&
+                if (cardIdentification.PcscDeviceClass == DeviceClass.StorageClass &&
                     (cardIdentification.PcscCardName == CardName.MifareStandard1K ||
                      cardIdentification.PcscCardName == CardName.MifareStandard4K))
                 {
@@ -665,7 +665,7 @@ namespace PC_SC_Driver
                 AddText("Connected to card\r\nPC/SC device class: " + cardIdentification.PcscDeviceClass.ToString() +
                         "\r\nCard name: " + cardIdentification.PcscCardName.ToString());
 
-                if (cardIdentification.PcscDeviceClass == MiFare.PcSc.DeviceClass.StorageClass &&
+                if (cardIdentification.PcscDeviceClass == DeviceClass.StorageClass &&
                     (cardIdentification.PcscCardName == CardName.MifareStandard1K ||
                      cardIdentification.PcscCardName == CardName.MifareStandard4K))
                 {
@@ -818,7 +818,7 @@ namespace PC_SC_Driver
                 AddText("Connected to card\r\nPC/SC device class: " + cardIdentification.PcscDeviceClass.ToString() +
                         "\r\nCard name: " + cardIdentification.PcscCardName.ToString());
 
-                if (cardIdentification.PcscDeviceClass == MiFare.PcSc.DeviceClass.StorageClass &&
+                if (cardIdentification.PcscDeviceClass == DeviceClass.StorageClass &&
                     (cardIdentification.PcscCardName == CardName.MifareStandard1K ||
                      cardIdentification.PcscCardName == CardName.MifareStandard4K))
                 {
@@ -879,17 +879,17 @@ namespace PC_SC_Driver
 
         private void useAPI_Click(object sender, EventArgs e)
         {
-            ServioBonus.ServioCardsShell.ServioCardInfo res;
+            ServioCardsShell.ServioCardInfo res;
             try
             {
-                res = ServioBonus.ServioCardsShell.Authorize();
+                res = ServioCardsShell.Authorize();
             }
             catch (Exception ex)
             {
                 AddText(ex.Message);
                 return;
             }
-            if (res.ErrorCore == (int) CoverConstants.ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int) ErrorCodes.E_SUCCESS)
                 AddText("Номер карты: " + res.IssuerID + "/" + res.CardNumber);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -899,7 +899,7 @@ namespace PC_SC_Driver
             byte[] res;
             try
             {
-                res = ServioBonus.ServioCardsShell.GetCard();
+                res = ServioCardsShell.GetCard();
             }
             catch (Exception ex)
             {
@@ -922,10 +922,10 @@ namespace PC_SC_Driver
         }
         private void infoAPI_Click(object sender, EventArgs e)
         {
-            ServioBonus.ServioCardsShell.ServioCardInfo res;
+            ServioCardsShell.ServioCardInfo res;
             try
             {
-                res = ServioBonus.ServioCardsShell.GetCardInfo();
+                res = ServioCardsShell.GetCardInfo();
             }
             catch (Exception ex)
             {
@@ -933,7 +933,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -944,17 +944,19 @@ namespace PC_SC_Driver
             try
             {
                 var item1 = new ServioCardsShell.CardOperationItem();
-                item1.GoodKind = (int)CoverConstants.GoodKind.GK_FUEL;
+                item1.GoodKind = (int)GoodKind.GK_FUEL;
                 item1.GoodCode = "1"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
                 item1.FuellingPoint = 2; // ТРК №1
-                item1.OrderUnit = (int)CoverConstants.OrderUnit.UNIT_QUTY;
-                item1.Price = 5; // Цена
+                item1.OrderUnit = (int)OrderUnit.UNIT_QUTY;
+                item1.Price = 10; // Цена
                 item1.Quantity = 2; // Количество
                 res = ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 121,  item1);
+                item1.Price = 10; // Цена
+                item1.Quantity = 1; // Количество
                 res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
-                //item1.Quantity -= 1; // Количество
-                //res += ServioCardsShell.CardOperationExecute(CardOperationType.Refund, 2, 123, item1);
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
+                //res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
             }
             catch (Exception ex)
             {
@@ -962,7 +964,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -973,11 +975,11 @@ namespace PC_SC_Driver
             try
             {
                 var item1 = new ServioCardsShell.CardOperationItem();
-                item1.GoodKind = (int)CoverConstants.GoodKind.GK_FUEL;
+                item1.GoodKind = (int)GoodKind.GK_FUEL;
                 item1.GoodCode = "1"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
                 item1.FuellingPoint = 2; // ТРК №1
-                item1.OrderUnit = (int)CoverConstants.OrderUnit.UNIT_QUTY;
+                item1.OrderUnit = (int)OrderUnit.UNIT_QUTY;
                 item1.Price = 5; // Цена
                 item1.Quantity = 4; // Количество
                 res = ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 1, 121, item1);
@@ -998,7 +1000,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)CoverConstants.ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -1016,7 +1018,7 @@ namespace PC_SC_Driver
                 AddText("Connected to card\r\nPC/SC device class: " + cardIdentification.PcscDeviceClass.ToString() +
                         "\r\nCard name: " + cardIdentification.PcscCardName.ToString());
 
-                if (cardIdentification.PcscDeviceClass == MiFare.PcSc.DeviceClass.StorageClass &&
+                if (cardIdentification.PcscDeviceClass == DeviceClass.StorageClass &&
                     (cardIdentification.PcscCardName == CardName.MifareStandard1K ||
                      cardIdentification.PcscCardName == CardName.MifareStandard4K))
                 {

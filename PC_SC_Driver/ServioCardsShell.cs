@@ -1,6 +1,5 @@
 ﻿//using ProjectSummer.Repository;
 using System;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.ServiceModel;
 using System.Text;
@@ -10,7 +9,7 @@ using OpCode = CoverConstants.OpCode;
 
 namespace ServioBonus
 {
-    [ServiceContract()]
+    [ServiceContract]
     public interface IServioOnlineAPI
     {
         [OperationContract]
@@ -30,7 +29,7 @@ namespace ServioBonus
         [OperationContract]
         int BonusCommit(long transID, int issuerId, string cardNumber, int fuelCode, decimal amount, decimal price, decimal quantity, decimal bonus, ref string error);
     }
-    public class IServioOnlineAPIClient : ClientBase<IServioOnlineAPI>
+    public class IServioOnlineAPIClient: ClientBase<IServioOnlineAPI>
     {
         public IServioOnlineAPIClient(Binding binding, EndpointAddress remoteAddress) : base(binding, remoteAddress) { }
     }
@@ -69,8 +68,8 @@ namespace ServioBonus
         [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
         private static extern int Return(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage, IntPtr operation);
 
-        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
-        private static extern int Refund(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage/*, IntPtr operation*/);
+        //[DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        //private static extern int Refund(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage/*, IntPtr operation*/);
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct CardOperation
@@ -90,9 +89,9 @@ namespace ServioBonus
             /// </summary>
             public string PosName
             {
-                /*
+/*
                 get { if (posName == IntPtr.Zero) return null; else return Marshal.PtrToStringBSTR(posName); }
-                */
+*/
                 set { posName = value == null ? IntPtr.Zero : Marshal.StringToBSTR(value); }
             }
             /// <summary>
@@ -531,6 +530,7 @@ namespace ServioBonus
                     }
                     throw new Exception("Error Init No" + res);
                 }
+                //Thread.Sleep(1000);
                 if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != (int) ErrorCodes.E_SUCCESS)
                 {
                     if (res.ErrorCore == (int) ErrorCodes.E_CANCEL)
@@ -571,7 +571,6 @@ namespace ServioBonus
                 operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
                 res.IssuerID = operation.IssuerID;
                 res.CardNumber = operation.CardNumber.PadLeft(20, '0');
-
                 return res;
             }
             finally
@@ -808,7 +807,7 @@ namespace ServioBonus
                 case CardOperationType.Return:
                     return Return(objRef, serialNumber, cardImage, operation);
                 default:
-                    return -200;
+                    return -2000;
             }
         }
 

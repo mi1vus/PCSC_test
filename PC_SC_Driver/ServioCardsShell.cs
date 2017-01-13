@@ -530,7 +530,6 @@ namespace ServioBonus
                     }
                     throw new Exception("Error Init No" + res);
                 }
-                //Thread.Sleep(1000);
                 if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != (int) ErrorCodes.E_SUCCESS)
                 {
                     if (res.ErrorCore == (int) ErrorCodes.E_CANCEL)

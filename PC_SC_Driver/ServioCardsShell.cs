@@ -1,14 +1,31 @@
 ﻿//using ProjectSummer.Repository;
+
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.ServiceModel;
 using System.Text;
-using CoverConstants;
+using System.Windows.Forms;
+using MarshalHelper;
 using Binding = System.ServiceModel.Channels.Binding;
-using OpCode = CoverConstants.OpCode;
 
 namespace ServioBonus
 {
+    public class CardShellException : Exception
+    {
+        public CardShellException(int code)
+        {
+            ErrorCode = code;
+        }
+
+        public CardShellException(string s, int code) : base(s)
+        {
+            ErrorCode = code;
+        }
+
+        public int ErrorCode { get { return HResult; } set { HResult = value; } }
+    }
+
     [ServiceContract]
     public interface IServioOnlineAPI
     {
@@ -29,9 +46,9 @@ namespace ServioBonus
         [OperationContract]
         int BonusCommit(long transID, int issuerId, string cardNumber, int fuelCode, decimal amount, decimal price, decimal quantity, decimal bonus, ref string error);
     }
-    public class IServioOnlineAPIClient: ClientBase<IServioOnlineAPI>
+    public class ServioOnlineAPIClient : ClientBase<IServioOnlineAPI>
     {
-        public IServioOnlineAPIClient(Binding binding, EndpointAddress remoteAddress) : base(binding, remoteAddress) { }
+        public ServioOnlineAPIClient(Binding binding, EndpointAddress remoteAddress) : base(binding, remoteAddress) { }
     }
     public unsafe class ServioCardsShell
     {
@@ -44,9 +61,9 @@ namespace ServioBonus
         [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
         private static extern IntPtr CardOperation_Create();
 
-        //[DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
-        //private static extern void CardOperation_Free(IntPtr operation);
-        
+        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        private static extern void CardOperation_Free(IntPtr operation);
+
         [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
         private static extern int ReadCard(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage, bool cardInfoOnly);
 
@@ -68,8 +85,27 @@ namespace ServioBonus
         [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
         private static extern int Return(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage, IntPtr operation);
 
-        //[DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
-        //private static extern int Refund(IntPtr objRef, IntPtr serialNumber, IntPtr cardImage/*, IntPtr operation*/);
+        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        private static extern int CustomStringLength(ref CustomString strRef);
+
+        // Копирование строки в буфер
+        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        private static extern IntPtr CustomStringGet(ref CustomString strRef, IntPtr buffer, int bufLen);
+
+        // Установка нового значения строки. Если DataLen <= 0 то очистка.
+        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        private static extern void CustomStringSet(ref CustomString strRef, IntPtr data, int dataLen);
+
+        // Очистка строки
+        [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
+        private static extern void CustomStringClear(ref CustomString strRef);
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        private struct CustomString
+        {
+            public int length;
+            public IntPtr str;
+        }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         private struct CardOperation
@@ -83,16 +119,14 @@ namespace ServioBonus
             /// </summary>
             public int POS;
 
-            private IntPtr posName;
+            private CustomString posName;
             /// <summary>
             /// Название АЗС
             /// </summary>
             public string PosName
             {
-/*
-                get { if (posName == IntPtr.Zero) return null; else return Marshal.PtrToStringBSTR(posName); }
-*/
-                set { posName = value == null ? IntPtr.Zero : Marshal.StringToBSTR(value); }
+                get { return CustomStringToUnicode(posName); }
+                set { if (value == null){posName.str = IntPtr.Zero;posName.length = 0;}else{UnicodeStringToCustom(ref posName, value);}}
             }
             /// <summary>
             /// OLE Дата/Время проведения транзакции. 0-не заполнено
@@ -123,14 +157,14 @@ namespace ServioBonus
             /// </summary>
             public int IssuerID;
 
-            private IntPtr cardNumber;
+            private CustomString cardNumber;
             /// <summary>
             /// Код карты VARCHAR(50)
             /// </summary>
             public string CardNumber
             {
-                get { return cardNumber == IntPtr.Zero ? null : Marshal.PtrToStringBSTR(cardNumber); }
-                set { cardNumber = value == null ? IntPtr.Zero : Marshal.StringToBSTR(value); }
+                get { return CustomStringToUnicode(cardNumber); }
+                set { if (value == null) { cardNumber.str = IntPtr.Zero; cardNumber.length = 0; } else { UnicodeStringToCustom(ref cardNumber, value); }}
             }
             /// <summary>
             /// Клиент
@@ -161,17 +195,26 @@ namespace ServioBonus
             /// </summary>
             public IntPtr Items;
 
-            private readonly IntPtr checkImage;
+            public List<CardOperationItem> ListItems
+            {
+                get
+                {
+                    if (Items != IntPtr.Zero)
+                    {
+                        IntPtr pItemInit = UnMemory<IntPtr>.ReadInMem(Items);
+                        CardOperationItem item = UnMemory<CardOperationItem>.ReadInMem(pItemInit);
+                        return new List<CardOperationItem> { item };
+                    }
+                    return new List<CardOperationItem>();
+                }
+            }
+
+            private readonly CustomString checkImage;
             /// <summary>
             /// Образ квитанции VARCHAR(MAX_CHECK_IMAGE_LEN)
             /// </summary>
-            public string CheckImage
-            {
-                get { return checkImage == IntPtr.Zero ? null : Marshal.PtrToStringBSTR(checkImage); }
-/*
-                set { if (value == null) checkImage = IntPtr.Zero; else checkImage = Marshal.StringToBSTR(value); }
-*/
-            }
+            public string CheckImage => CustomStringToUnicode(checkImage);
+
             /// <summary>
             /// Причина отказа по операции
             /// </summary>
@@ -197,27 +240,27 @@ namespace ServioBonus
             /// Тип товара: 0-товары,1-услуги,2-топливо
             /// </summary>
             public byte GoodKind;
-            private IntPtr goodCode;
+            private CustomString goodCode;
             /// <summary>
             /// Код товара
             /// </summary>
             public string GoodCode
             {
-                get { return goodCode == IntPtr.Zero ? null : Marshal.PtrToStringBSTR(goodCode); }
-                set { goodCode = value == null ? IntPtr.Zero : Marshal.StringToBSTR(value); }
+                get { return CustomStringToUnicode(goodCode); }
+                set { if (value == null) { goodCode.str = IntPtr.Zero; goodCode.length = 0; } else { UnicodeStringToCustom(ref goodCode, value); } }
             }
             /// <summary>
             /// Группа
             /// </summary>
             public int Group;
-            private IntPtr goodName;
+            private CustomString goodName;
             /// <summary>
             /// Название
             /// </summary>
             public string GoodName
             {
-                get { return goodName == IntPtr.Zero ? null : Marshal.PtrToStringBSTR(goodName); }
-                set { goodName = value == null ? IntPtr.Zero : Marshal.StringToBSTR(value); }
+                get { return CustomStringToUnicode(goodName); }
+                set { if (value == null) { goodName.str = IntPtr.Zero; goodName.length = 0; } else { UnicodeStringToCustom(ref goodName, value); } }
             }
             /// <summary>
             /// Номер ТРК. 0-магазин
@@ -278,10 +321,12 @@ namespace ServioBonus
         [StructLayout(LayoutKind.Explicit, Pack = 1)]
         private struct SerialnumberT
         {
-            [FieldOffset(0)] private readonly uint FourByteUID;
-            [FieldOffset(0)] private fixed byte SevenByteUID[7];
+            [FieldOffset(0)]
+            private readonly uint FourByteUID;
+            [FieldOffset(0)]
+            private fixed byte SevenByteUID[7];
 
-            //public Tuple <string, string> GetSerial()
+            //public Tuple <string, str> GetSerial()
             //{
             //    var res1 = BitConverter.GetBytes(FourByteUID);
             //    var res2 = new byte[7];
@@ -293,7 +338,7 @@ namespace ServioBonus
             //            res2[i] = *(p + i);
             //        }
             //    }
-            //    return new Tuple<string, string>(BitConverter.ToString(res1), BitConverter.ToString(res2));
+            //    return new Tuple<string, str>(BitConverter.ToString(res1), BitConverter.ToString(res2));
             //}
         }
 
@@ -302,7 +347,8 @@ namespace ServioBonus
         {
             public const int Size = 4096;
 
-            [FieldOffset(0)] private fixed byte block[Size];
+            [FieldOffset(0)]
+            private fixed byte block[Size];
 
             public byte[] GetBlocks()
             {
@@ -317,24 +363,24 @@ namespace ServioBonus
                 return res;
             }
 
-/*
-            public void ClearBlocks()
-            {
-                fixed (byte* p = this.block)
-                {
-                    for (int i = 0; i < Size; ++i)
-                    {
-                        *(p + i) = 0xA0;
-                    }
-                }
-            }
-*/
+            /*
+                        public void ClearBlocks()
+                        {
+                            fixed (byte* p = this.block)
+                            {
+                                for (int i = 0; i < Size; ++i)
+                                {
+                                    *(p + i) = 0xA0;
+                                }
+                            }
+                        }
+            */
         }
 
         public struct ServioCardInfo
         {
             public int ErrorCore;
-            public string ErrorDescription => ((ErrorCodeDescriptions) ErrorCore).ToString();
+            public string ErrorDescription => ((ErrorCodeDescriptions)ErrorCore).ToString();
 
             public string CardInfo { get; set; }
 
@@ -343,7 +389,7 @@ namespace ServioBonus
 
             public static ServioCardInfo operator +(ServioCardInfo obj1, ServioCardInfo obj2)
             {
-                if (obj2.ErrorCore != (int) ErrorCodes.E_SUCCESS)
+                if (obj2.ErrorCore != (int)ErrorCodes.ESuccess)
                     obj1.ErrorCore = obj2.ErrorCore;
 
                 obj1.CardNumber = obj2.CardNumber;
@@ -354,7 +400,9 @@ namespace ServioBonus
 
             public override string ToString()
             {
-                return (ErrorCore != 0) ? $"Ошибка чтения карты: {ErrorCore} {ErrorDescription}" : $"Эмитент: {IssuerID}\r\nНомер карты: {CardNumber}";
+                return (ErrorCore != 0) ?
+                    $"Ошибка чтения карты: {ErrorCore} {ErrorDescription}" : 
+                    $"Номер карты: {IssuerID}\\{CardNumber.PadLeft(20, '0')}";
             }
         }
 
@@ -390,7 +438,7 @@ namespace ServioBonus
 
             if (str.CIType == 103)
             {
-                System.Windows.Forms.MessageBox.Show($@"str.CIType = {str.CIType}, pin = {_pin}, str.BufLen = {str.BufLen}");
+                MessageBox.Show($@"str.CIType = {str.CIType}, pin = {_pin}, str.BufLen = {str.BufLen}");
                 var data = Encoding.Unicode.GetBytes(_pin + "\0");
                 for (int z = 0; z < data.Length && z < str.BufLen; z++)
                     Marshal.WriteByte(str.Buffer, z, data[z]);
@@ -405,14 +453,14 @@ namespace ServioBonus
 
         public static ServioCardInfo ReadCardNumber(string pin)
         {
-            ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
+            ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             try
             {
                 _pin = pin;
                 IntPtr obj = new IntPtr();
 
                 if ((res.ErrorCore = Init(_config, ref obj)) != 0)
-                    throw new Exception("Error Init No" + res);
+                    throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
                 SetCallback(obj, Marshal.GetFunctionPointerForDelegate(Callback), IntPtr.Zero);
                 SerialnumberT serialNumber = new SerialnumberT();
@@ -422,27 +470,27 @@ namespace ServioBonus
                 var operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
 
                 if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != 0)
-                    throw new Exception("Error ReadCard No" + res);
+                    throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
 
                 operation.PosName = "TestTestTest";
                 operation.Size = sizeof(CardOperation);
                 operation.POS = 1;
                 operation.OpTime = DateTime.Now.ToOADate();
                 operation.IsPostpay = 0;
-                operation.CardType = (int)CardType.CT_IDENTIFIER_AUTHORIZATION;
+                operation.CardType = (int)CardType.CtIdentifierAuthorization;
                 operation.SerialNumber = serialNumber;
                 operation.CardNumber = null;
                 operation.IssuerID = -1;
                 operation.AddPrefixZeros = 0;
                 operation.WoCard = 0;
-                operation.PINChecked = (byte)(pin == ""? 1 : 0);
+                operation.PINChecked = (byte)(pin == "" ? 1 : 0);
                 operation.ItemCount = 0;
                 Marshal.StructureToPtr(operation, operationPtr, true);
 
                 //Operation = (TCardOperation)Marshal.PtrToStructure(_Operation, typeof(TCardOperation));
 
                 if ((res.ErrorCore = Auth(obj, serialNumberPtr, cardImagePtr, operationPtr)) != 0)
-                    throw new Exception("Error Auth No" + res);
+                    throw new CardShellException("Error Auth No" + res, res.ErrorCore);
 
                 operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
                 res.IssuerID = operation.IssuerID;
@@ -460,7 +508,7 @@ namespace ServioBonus
             IntPtr obj = new IntPtr();
 
             if ((res.ErrorCore = Init(_config, ref obj)) != 0)
-                throw new Exception("Error Init No" + res);
+                throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
             IntPtr cardImagePtr = Marshal.AllocHGlobal(sizeof(Mf1S70T));
@@ -468,7 +516,7 @@ namespace ServioBonus
             try
             {
                 if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != 0)
-                    throw new Exception("Error ReadCard No" + res);
+                    throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
                 //Operation = MarshalHelper.UnMemory<TCardOperation>.ReadInMem(OperationPtr);
                 //var op = Operation.CheckImage;
                 //SERIALNUMBER_T SerialNumber = MarshalHelper.UnMemory<SERIALNUMBER_T>.ReadInMem(SerialNumberPtr);
@@ -490,9 +538,9 @@ namespace ServioBonus
                 //MarshalHelper.UnMemory<TCardOperation>.SaveInMem(Operation, ref OperationPtr);
 
                 if ((res.ErrorCore = Auth(obj, serialNumberPtr, cardImagePtr, operationPtr)) != 0)
-                    throw new Exception("Error Auth No" + res);
+                    throw new CardShellException("Error Auth No" + res, res.ErrorCore);
 
-                var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
+                var operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
                 //var op = Operation.CheckImage;
                 //SerialNumber = MarshalHelper.UnMemory<SERIALNUMBER_T>.ReadInMem(SerialNumberPtr);
                 //var ser = SerialNumber.getSerial();
@@ -503,17 +551,17 @@ namespace ServioBonus
             }
             finally
             {
-                MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-                MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
+                UnMemory.FreeIntPtr(serialNumberPtr);
+                UnMemory.FreeIntPtr(cardImagePtr);
                 //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-                //CardOperation_Free(operationPtr);
+                CardOperation_Free(operationPtr);
             }
             return res;
         }
         // АВТОРИЗАЦИЯ
         public static ServioCardInfo Authorize()
         {
-            ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
+            ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
@@ -522,80 +570,85 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.E_SUCCESS)
+                if ((res.ErrorCore = Init(_config, ref obj)) != (int) ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int) ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error Init No" + res);
+                    throw new CardShellException("Error Init No" + res, res.ErrorCore);
                 }
-                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != (int) ErrorCodes.E_SUCCESS)
+                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, true)) != (int) ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int) ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int) ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error ReadCard No" + res);
+                    throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
                 }
 
-                var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-                SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
+                var operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
+                SerialnumberT serialNumber = UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
 
                 operation.Size = sizeof(CardOperation);
                 operation.POS = 1; // Номер АЗС или терминала
                 operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
                 operation.TransactID = 0; // Тут желательно ваш код код транзакции указать
-                operation.OpCode = (byte)OpCode.OP_AUTHORIZATION;
+                operation.OpCode = (byte) OpCode.OpAuthorization;
                 operation.IsPostpay = 0; // как есть - если постоплата - указать true
-                operation.CardType = (int)CardType.UNKNOWN; // Предположим что тип карты неизвестен
+                operation.CardType = (int) CardType.Unknown; // Предположим что тип карты неизвестен
                 operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
-                operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
+                operation.IssuerID = -1;// Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
                 operation.CardNumber = ""; // Не указывать !!!
                 operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
                 operation.WoCard = 0; //
-                operation.PINChecked = 0; // Если указать false то драйвер запросит форму ввода пароля через callback в случае, если на карту поставили PIN-код
+                operation.PINChecked = 0;// Если указать false то драйвер запросит форму ввода пароля через callback в случае, если на карту поставили PIN-код
                 operation.ItemCount = 0; // Позиции не нужны
 
-                MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
+                UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
 
-                if ((res.ErrorCore = Auth(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
+                if ((res.ErrorCore = Auth(obj, serialNumberPtr, cardImagePtr, operationPtr)) !=
+                    (int) ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int) ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error Auth No" + res);
+                    throw new CardShellException("Error Auth No" + res, res.ErrorCore);
                 }
-                operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
+                operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
                 res.IssuerID = operation.IssuerID;
                 res.CardNumber = operation.CardNumber.PadLeft(20, '0');
                 return res;
             }
+            catch
+            {
+                return new ServioCardInfo {ErrorCore = (int)ErrorCodes.EGeneric, };
+            }
             finally
             {
-                MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-                MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
+                UnMemory.FreeIntPtr(serialNumberPtr);
+                UnMemory.FreeIntPtr(cardImagePtr);
                 //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-                //CardOperation_Free(operationPtr);
+                CardOperation_Free(operationPtr);
             }
         }
 
         public static byte[] GetCard()
         {
-            ServioCardInfo err = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
+            ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
-            if ((err.ErrorCore = Init(_config, ref obj)) != 0)
-                throw new Exception("Error Init No" + err);
+            if ((res.ErrorCore = Init(_config, ref obj)) != 0)
+                throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
             IntPtr cardImagePtr = Marshal.AllocHGlobal(sizeof(Mf1S70T));
-            MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-            if ((err.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != 0)
-                throw new Exception("Error ReadCard No" + err);
+            UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
+            if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != 0)
+                throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
 
-            var blocks = MarshalHelper.UnMemory<Mf1S70T>.ReadInMem(cardImagePtr);
+            var blocks = UnMemory<Mf1S70T>.ReadInMem(cardImagePtr);
             var card = blocks.GetBlocks();
 
             return card;
@@ -603,7 +656,7 @@ namespace ServioBonus
         // ИНФОРМАЦИЯ ПО КАРТЕ
         public static ServioCardInfo GetCardInfo()
         {
-            ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
+            ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
@@ -612,47 +665,47 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.E_SUCCESS)
+                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error Init No" + res);
+                    throw new CardShellException("Error Init No" + res, res.ErrorCore);
                 }
-                MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.E_SUCCESS)
+                UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
+                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error ReadCard No" + res);
+                    throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
                 }
-                var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-                SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
+                var operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
+                SerialnumberT serialNumber = UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
 
                 operation.Size = sizeof(CardOperation);
                 operation.POS = 1; // Номер АЗС или терминала
                 operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
                 operation.TransactID = 0; // Тут желательно ваш код код транзакции указать
-                operation.CardType = (int)CardType.UNKNOWN; // Предположим что тип карты неизвестен
+                operation.CardType = (int)CardType.Unknown; // Предположим что тип карты неизвестен
                 operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
                 operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
                 operation.CardNumber = ""; // Не указывать !!!
                 operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
                 operation.ItemCount = 0; // При аутентификации позиции не заполнять.
 
-                MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
+                UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
 
                 // Смотрим информацию по карте
-                if ((res.ErrorCore = CardInfo(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
-                    throw new Exception("Error CardInfo No" + res);
+                if ((res.ErrorCore = CardInfo(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.ESuccess)
+                    throw new CardShellException("Error CardInfo No" + res, res.ErrorCore);
 
                 // флаг указывает на то что образ карты был изменен в процессе операции
                 // и нужно записать его обратно.
                 // Нужно для пополнения карты при просмотре информации
-                operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
+                operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
                 if (operation.CardImageChanged != 0)
                 {
                     // при ошибке можно попробовать повторить операцию несколько раз 3-10...
@@ -662,24 +715,27 @@ namespace ServioBonus
                     // записать обратно даже при перезапуске ПО, но до следующего
                     // обслуживания по карте. Чтобы решить ситуацию можно сохранить CardInfo
                     // чтобы в офисе уменьшили или увеличили баланс карты на соотв. значение.
-                    if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.E_SUCCESS)
-                        throw new Exception("Error WriteCard No" + res);
+                    if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.ESuccess)
+                        throw new CardShellException("Error WriteCard No" + res, res.ErrorCore);
                 }
 
                 operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
                 res.CardInfo = operation.CheckImage;
+                res.IssuerID = operation.IssuerID;
+                res.CardNumber = operation.CardNumber;
                 return res;
             }
             finally
             {
-                MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-                MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
+                UnMemory.FreeIntPtr(serialNumberPtr);
+                UnMemory.FreeIntPtr(cardImagePtr);
                 //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-                //CardOperation_Free(operationPtr);
+                CardOperation_Free(operationPtr);
             }
 
         }
 
+        // ОПЕРАЦИЯ ПО КАРТЕ
         /// <summary>
         /// ОПЕРАЦИЯ ПО КАРТЕ
         /// </summary>
@@ -688,9 +744,9 @@ namespace ServioBonus
         /// <param name="transact">номер транзакции</param>
         /// <param name="opItem">параметры операции</param>
         /// <returns></returns>
-        public static ServioCardInfo CardOperationExecute(CardOperationType type, int terminal, int transact, CardOperationItem opItem)
+        public static ServioCardInfo CardOperationExecute(CardOperationType type, int terminal, long transact, CardOperationItem opItem)
         {
-            ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
+            ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
@@ -699,32 +755,32 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int) ErrorCodes.E_SUCCESS)
+                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int) ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error Init No" + res);
+                    throw new CardShellException("Error Init No" + res, res.ErrorCore);
                 }
-                MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int) ErrorCodes.E_SUCCESS)
+                UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
+                if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.ESuccess)
                 {
-                    if (res.ErrorCore == (int) ErrorCodes.E_CANCEL)
+                    if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
                         return res;
                     }
-                    throw new Exception("Error ReadCard No" + res);
+                    throw new CardShellException("Error ReadCard No" + res, res.ErrorCore);
                 }
-                var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-                SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
+                var operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
+                SerialnumberT serialNumber = UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
 
                 operation.Size = sizeof(CardOperation);
                 operation.OpCode = (byte)OperationSelector(type);
                 operation.POS = terminal; // Номер АЗС или терминала
                 operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
                 operation.TransactID = transact; // Тут желательно ваш код код транзакции указать
-                operation.CardType = (int)CardType.CT_PAYMENT; // Предположим что тип карты неизвестен
+                operation.CardType = (int)CardType.CtPayment; // Предположим что тип карты неизвестен
                 operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
                 operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
                 operation.CardNumber = ""; // Не указывать !!!
@@ -732,21 +788,23 @@ namespace ServioBonus
                 operation.ItemCount = 1; // При аутентификации позиции не заполнять.
 
                 IntPtr pItem1 = Marshal.AllocHGlobal(sizeof(CardOperationItem));
-                MarshalHelper.UnMemory<CardOperationItem>.SaveInMem(opItem, ref pItem1);
+                UnMemory<CardOperationItem>.SaveInMem(opItem, ref pItem1);
                 IntPtr ppItem1 = Marshal.AllocHGlobal(sizeof(IntPtr));
-                MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
+                UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
 
                 operation.Items = ppItem1;
 
-                MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
+                UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
 
-                if ((res.ErrorCore = OperationSelector(type, obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
-                    throw new Exception("Error Operation No" + res);
+                if ((res.ErrorCore = 
+                    OperationSelector(type, obj, serialNumberPtr, cardImagePtr, operationPtr))
+                    != (int)ErrorCodes.ESuccess)
+                    throw new CardShellException("Error Operation No" + res, res.ErrorCore);
 
                 // флаг указывает на то что образ карты был изменен в процессе операции
                 // и нужно записать его обратно.
                 // Нужно для пополнения карты при просмотре информации
-                operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
+                operation = UnMemory<CardOperation>.ReadInMem(operationPtr);
                 if (operation.CardImageChanged != 0)
                 {
                     // при ошибке можно попробовать повторить операцию несколько раз 3-10...
@@ -756,8 +814,8 @@ namespace ServioBonus
                     // записать обратно даже при перезапуске ПО, но до следующего
                     // обслуживания по карте. Чтобы решить ситуацию можно сохранить CardInfo
                     // чтобы в офисе уменьшили или увеличили баланс карты на соотв. значение.
-                    if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.E_SUCCESS)
-                        throw new Exception("Error WriteCard No" + res);
+                    if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.ESuccess)
+                        throw new CardShellException("Error WriteCard No" + res, res.ErrorCore);
                 }
 
                 operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
@@ -766,10 +824,10 @@ namespace ServioBonus
             }
             finally
             {
-                MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-                MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
-                //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
                 //CardOperation_Free(operationPtr);
+                UnMemory.FreeIntPtr(serialNumberPtr);
+                UnMemory.FreeIntPtr(cardImagePtr);
+                //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
             }
         }
 
@@ -778,17 +836,17 @@ namespace ServioBonus
             switch (type)
             {
                 case CardOperationType.Credit:
-                    return OpCode.OP_CREDIT;
+                    return OpCode.OpCredit;
                 case CardOperationType.Debit:
-                    return OpCode.OP_DEBIT;
+                    return OpCode.OpDebit;
                 case CardOperationType.Sale:
-                    return OpCode.OP_DEBIT;
+                    return OpCode.OpDebit;
                 case CardOperationType.Refund:
-                    return OpCode.OP_REFUND;
+                    return OpCode.OpRefund;
                 case CardOperationType.Return:
-                    return OpCode.OP_ANNULATE;
+                    return OpCode.OpAnnulate;
                 default:
-                    return OpCode.OP_AUTHORIZATION;
+                    return OpCode.OpAuthorization;
             }
         }
         public static int OperationSelector(CardOperationType type, IntPtr objRef, IntPtr serialNumber, IntPtr cardImage, IntPtr operation)
@@ -810,261 +868,28 @@ namespace ServioBonus
             }
         }
 
-        //// ВОЗВРАТ ПО КАРТЕ
-        //public static ServioCardInfo CardReturn(int transact, CardOperationItem opItem)
-        //{
-        //    ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
-        //    IntPtr obj = new IntPtr();
+        private static void UnicodeStringToCustom(ref CustomString customString, string str)
+        {
+            str += "\0";
+            IntPtr s = Marshal.StringToHGlobalUni(str);
+            CustomStringSet(ref customString, s, (!string.IsNullOrEmpty(str) && str[0] == '\0') ? 0 : str.Length*2);
+            customString.length = str.Length - 1;
+        }
+        private static string CustomStringToUnicode(CustomString customString)
+        {
+            int len = CustomStringLength(ref customString);
+            if (len <= 0)
+            {
+                return "";
+            }
 
-        //    IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
-        //    IntPtr cardImagePtr = Marshal.AllocHGlobal(sizeof(Mf1S70T));
-        //    IntPtr operationPtr = CardOperation_Create();
-
-        //    try
-        //    {
-        //        if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error Init No" + res);
-        //        }
-        //        MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-        //        if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error ReadCard No" + res);
-        //        }
-        //        var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
-
-        //        operation.Size = sizeof(CardOperation);
-        //        operation.OpCode = (byte)OpCode.OP_REFUND;
-        //        operation.POS = 1; // Номер АЗС или терминала
-        //        operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
-        //        operation.TransactID = transact; // Тут желательно ваш код код транзакции указать
-        //        operation.CardType = (int)CardType.CT_PAYMENT; // Предположим что тип карты неизвестен
-        //        operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
-        //        operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
-        //        operation.CardNumber = ""; // Не указывать !!!
-        //        operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
-        //        operation.ItemCount = 1; // При аутентификации позиции не заполнять.
-
-        //        IntPtr pItem1 = Marshal.AllocHGlobal(sizeof(CardOperationItem));
-        //        MarshalHelper.UnMemory<CardOperationItem>.SaveInMem(opItem, ref pItem1);
-        //        IntPtr ppItem1 = Marshal.AllocHGlobal(sizeof(IntPtr));
-        //        MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
-
-        //        operation.Items = ppItem1;
-
-        //        MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
-
-        //        if ((res.ErrorCore = Refund(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
-        //            throw new Exception("Error Return No" + res);
-
-        //        // флаг указывает на то что образ карты был изменен в процессе операции
-        //        // и нужно записать его обратно.
-        //        // Нужно для пополнения карты при просмотре информации
-        //        operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        if (operation.CardImageChanged != 0)
-        //        {
-        //            // при ошибке можно попробовать повторить операцию несколько раз 3-10...
-        //            // если не проходит то это патовая ситуация и для её дальнейшего
-        //            // разрешения нужно сохранить SerialNumber, CardImage и CardInfo
-        //            // В теории, сохранённый SerialNumber и CardImage можно попробовать
-        //            // записать обратно даже при перезапуске ПО, но до следующего
-        //            // обслуживания по карте. Чтобы решить ситуацию можно сохранить CardInfo
-        //            // чтобы в офисе уменьшили или увеличили баланс карты на соотв. значение.
-        //            if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.E_SUCCESS)
-        //                throw new Exception("Error WriteCard No" + res);
-        //        }
-
-        //        operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
-        //        res.CardInfo = operation.CheckImage;
-        //        return res;
-        //    }
-        //    finally
-        //    {
-        //        MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-        //        MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
-        //        //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-        //        //CardOperation_Free(operationPtr);
-        //    }
-        //}
-        //// ПОПОЛНЕНИЕ
-        //public static ServioCardInfo CardCredit(int transact, CardOperationItem opItem)
-        //{
-        //    ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
-        //    IntPtr obj = new IntPtr();
-
-        //    IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
-        //    IntPtr cardImagePtr = Marshal.AllocHGlobal(sizeof(Mf1S70T));
-        //    IntPtr operationPtr = CardOperation_Create();
-
-        //    try
-        //    {
-        //        if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error Init No" + res);
-        //        }
-        //        MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-        //        if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error ReadCard No" + res);
-        //        }
-        //        var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
-
-        //        operation.Size = sizeof(CardOperation);
-        //        operation.OpCode = (byte)OpCode.OP_CREDIT;
-        //        operation.POS = 1; // Номер АЗС или терминала
-        //        operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
-        //        operation.TransactID = transact; // Тут желательно ваш код код транзакции указать
-        //        operation.CardType = (int)CardType.CT_PAYMENT; // Предположим что тип карты неизвестен
-        //        operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
-        //        operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
-        //        operation.CardNumber = ""; // Не указывать !!!
-        //        operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
-        //        operation.ItemCount = 1; // При аутентификации позиции не заполнять.
-
-        //        IntPtr pItem1 = Marshal.AllocHGlobal(sizeof(CardOperationItem));
-        //        MarshalHelper.UnMemory<CardOperationItem>.SaveInMem(opItem, ref pItem1);
-        //        IntPtr ppItem1 = Marshal.AllocHGlobal(sizeof(IntPtr));
-        //        MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
-
-        //        operation.Items = ppItem1;
-
-        //        MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
-
-        //        if ((res.ErrorCore = Credit(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
-        //            throw new Exception("Error Sale No" + res);
-
-        //        // флаг указывает на то что образ карты был изменен в процессе операции
-        //        // и нужно записать его обратно.
-        //        // Нужно для пополнения карты при просмотре информации
-        //        operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        if (operation.CardImageChanged != 0)
-        //        {
-        //            // при ошибке можно попробовать повторить операцию несколько раз 3-10...
-        //            // если не проходит то это патовая ситуация и для её дальнейшего
-        //            // разрешения нужно сохранить SerialNumber, CardImage и CardInfo
-        //            // В теории, сохранённый SerialNumber и CardImage можно попробовать
-        //            // записать обратно даже при перезапуске ПО, но до следующего
-        //            // обслуживания по карте. Чтобы решить ситуацию можно сохранить CardInfo
-        //            // чтобы в офисе уменьшили или увеличили баланс карты на соотв. значение.
-        //            if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.E_SUCCESS)
-        //                throw new Exception("Error WriteCard No" + res);
-        //        }
-
-        //        operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
-        //        res.CardInfo = operation.CheckImage;
-        //        return res;
-        //    }
-        //    finally
-        //    {
-        //        MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-        //        MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
-        //        //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-        //        //CardOperation_Free(operationPtr);
-        //    }
-        //}
-        //// СПИСАНИЕ
-        //public static ServioCardInfo CardDebit(int transact, CardOperationItem opItem)
-        //{
-        //    ServioCardInfo res = new ServioCardInfo() { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
-        //    IntPtr obj = new IntPtr();
-
-        //    IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
-        //    IntPtr cardImagePtr = Marshal.AllocHGlobal(sizeof(Mf1S70T));
-        //    IntPtr operationPtr = CardOperation_Create();
-
-        //    try
-        //    {
-        //        if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error Init No" + res);
-        //        }
-        //        MarshalHelper.UnMemory<byte>.SaveInMemArr(new byte[Mf1S70T.Size], ref cardImagePtr);
-        //        if ((res.ErrorCore = ReadCard(obj, serialNumberPtr, cardImagePtr, false)) != (int)ErrorCodes.E_SUCCESS)
-        //        {
-        //            if (res.ErrorCore == (int)ErrorCodes.E_CANCEL)
-        //            {
-        //                return res;
-        //            }
-        //            throw new Exception("Error ReadCard No" + res);
-        //        }
-        //        var operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        SerialnumberT serialNumber = MarshalHelper.UnMemory<SerialnumberT>.ReadInMem(serialNumberPtr);
-
-        //        operation.Size = sizeof(CardOperation);
-        //        operation.OpCode = (byte)OpCode.OP_DEBIT;
-        //        operation.POS = 1; // Номер АЗС или терминала
-        //        operation.OpTime = DateTime.Now.ToOADate(); // Реальное время с вашего терминала
-        //        operation.TransactID = transact; // Тут желательно ваш код код транзакции указать
-        //        operation.CardType = (int)CardType.CT_PAYMENT; // Предположим что тип карты неизвестен
-        //        operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
-        //        operation.IssuerID = -1; // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
-        //        operation.CardNumber = ""; // Не указывать !!!
-        //        operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
-        //        operation.ItemCount = 1; // При аутентификации позиции не заполнять.
-
-        //        IntPtr pItem1 = Marshal.AllocHGlobal(sizeof(CardOperationItem));
-        //        MarshalHelper.UnMemory<CardOperationItem>.SaveInMem(opItem, ref pItem1);
-        //        IntPtr ppItem1 = Marshal.AllocHGlobal(sizeof(IntPtr));
-        //        MarshalHelper.UnMemory<IntPtr>.SaveInMem(pItem1, ref ppItem1);
-
-        //        operation.Items = ppItem1;
-
-        //        MarshalHelper.UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
-
-        //        if ((res.ErrorCore = Debit(obj, serialNumberPtr, cardImagePtr, operationPtr)) != (int)ErrorCodes.E_SUCCESS)
-        //            throw new Exception("Error Sale No" + res);
-
-        //        // флаг указывает на то что образ карты был изменен в процессе операции
-        //        // и нужно записать его обратно.
-        //        // Нужно для пополнения карты при просмотре информации
-        //        operation = MarshalHelper.UnMemory<CardOperation>.ReadInMem(operationPtr);
-        //        if (operation.CardImageChanged != 0)
-        //        {
-        //            // при ошибке можно попробовать повторить операцию несколько раз 3-10...
-        //            // если не проходит то это патовая ситуация и для её дальнейшего
-        //            // разрешения нужно сохранить SerialNumber, CardImage и CardInfo
-        //            // В теории, сохранённый SerialNumber и CardImage можно попробовать
-        //            // записать обратно даже при перезапуске ПО, но до следующего
-        //            // обслуживания по карте. Чтобы решить ситуацию можно сохранить CardInfo
-        //            // чтобы в офисе уменьшили или увеличили баланс карты на соотв. значение.
-        //            if ((res.ErrorCore = WriteCard(obj, serialNumberPtr, cardImagePtr)) != (int)ErrorCodes.E_SUCCESS)
-        //                throw new Exception("Error WriteCard No" + res);
-        //        }
-
-        //        operation = (CardOperation)Marshal.PtrToStructure(operationPtr, typeof(CardOperation));
-        //        res.CardInfo = operation.CheckImage;
-        //        return res;
-        //    }
-        //    finally
-        //    {
-        //        MarshalHelper.UnMemory.FreeIntPtr(serialNumberPtr);
-        //        MarshalHelper.UnMemory.FreeIntPtr(cardImagePtr);
-        //        //MarshalHelper.UnMemory.FreeIntPtr(operationPtr);
-        //        //CardOperation_Free(operationPtr);
-        //    }
-        //}
-
+            IntPtr s = Marshal.AllocHGlobal(len*3);
+            CustomStringGet(ref customString, s, len*3);
+            //byte[] tmp  = new byte[256];
+            //for (int z = 0; z < len + 20; z++)
+            //    tmp[z] = Marshal.ReadByte(s, z);
+            var r = Marshal.PtrToStringUni(s);
+            return r;
+        }
     }
 }

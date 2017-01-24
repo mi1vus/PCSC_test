@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using CoverConstants;
 using ServioBonus;
 
 namespace PC_SC_Driver
@@ -889,8 +888,8 @@ namespace PC_SC_Driver
                 AddText(ex.Message);
                 return;
             }
-            if (res.ErrorCore == (int) ErrorCodes.E_SUCCESS)
-                AddText("Номер карты: " + res.IssuerID + "/" + res.CardNumber);
+            if (res.ErrorCore == (int) ErrorCodes.ESuccess)
+                AddText(res.ToString());
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
         }
@@ -933,7 +932,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.ESuccess)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -943,19 +942,33 @@ namespace PC_SC_Driver
             ServioCardsShell.ServioCardInfo res;
             try
             {
+                var start = DateTime.Now;
                 var item1 = new ServioCardsShell.CardOperationItem();
-                item1.GoodKind = (int)GoodKind.GK_FUEL;
-                item1.GoodCode = "1"; // Код для устройств
+                item1.GoodKind = (int)GoodKind.GkFuel;
+                item1.GoodCode = "6"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
-                item1.FuellingPoint = 2; // ТРК №1
-                item1.OrderUnit = (int)OrderUnit.UNIT_QUTY;
+                item1.FuellingPoint = 1; // ТРК №1
+                item1.OrderUnit = (int)OrderUnit.UnitQuty;
                 item1.Price = 10; // Цена
                 item1.Quantity = 2; // Количество
                 res = ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 121,  item1);
+                AddText((DateTime.Now - start).ToString());
+                item1.GoodKind = (int)GoodKind.GkService;
+                item1.GoodCode = "1"; // Код для устройств
+                item1.GoodName = "Стрижка"; // название
+                item1.FuellingPoint = 1; // ТРК №1
+                item1.OrderUnit = (int)OrderUnit.UnitMoney;
+                item1.Price = 10; // Цена
+                item1.Quantity = 2; // Количество                res += ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 3, 122, item1);
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 123, item1);
+                AddText((DateTime.Now - start).ToString());
+                item1.Quantity = 1; // Количество
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 124, item1);
+                AddText((DateTime.Now - start).ToString());
+                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 124, item1);
+                AddText((DateTime.Now - start).ToString());
                 item1.Price = 10; // Цена
                 item1.Quantity = 1; // Количество
-                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
-                res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
                 //res += ServioCardsShell.CardOperationExecute(CardOperationType.Return, 1, 122, item1);
             }
             catch (Exception ex)
@@ -964,7 +977,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.ESuccess)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");
@@ -975,13 +988,13 @@ namespace PC_SC_Driver
             try
             {
                 var item1 = new ServioCardsShell.CardOperationItem();
-                item1.GoodKind = (int)GoodKind.GK_FUEL;
+                item1.GoodKind = (int)GoodKind.GkFuel;
                 item1.GoodCode = "1"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
                 item1.FuellingPoint = 2; // ТРК №1
-                item1.OrderUnit = (int)OrderUnit.UNIT_QUTY;
-                item1.Price = 5; // Цена
-                item1.Quantity = 4; // Количество
+                item1.OrderUnit = (int)OrderUnit.UnitQuty;
+                item1.Price = 100; // Цена
+                item1.Quantity = 40; // Количество
                 res = ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 1, 121, item1);
                 item1.GoodCode = "2"; // Код для устройств
                 res += ServioCardsShell.CardOperationExecute(CardOperationType.Credit, 2, 122, item1);
@@ -1000,7 +1013,7 @@ namespace PC_SC_Driver
                 return;
             }
 
-            if (res.ErrorCore == (int)ErrorCodes.E_SUCCESS)
+            if (res.ErrorCore == (int)ErrorCodes.ESuccess)
                 AddText("Образ чека:\r\n" + res.CardInfo);
             else
                 AddText($"Ошибка карты:\r\n{res.ErrorCore} {res.ErrorDescription}");

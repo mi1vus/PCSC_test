@@ -7,8 +7,8 @@
     <ProjectGuid>{D4F83205-BE58-45EE-B97B-1DC1E7A7FCC9}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>PC_SC_Driver</RootNamespace>
-    <AssemblyName>PC_SC_Driver</AssemblyName>
+    <RootNamespace>PC_SC_DriverTest</RootNamespace>
+    <AssemblyName>PC_SC_DriverTest</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

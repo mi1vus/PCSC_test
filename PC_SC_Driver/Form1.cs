@@ -945,11 +945,11 @@ namespace PC_SC_Driver
                 var start = DateTime.Now;
                 var item1 = new ServioCardsShell.CardOperationItem();
                 item1.GoodKind = (int)GoodKind.GkFuel;
-                item1.GoodCode = "6"; // Код для устройств
+                item1.GoodCode = "1"; // Код для устройств
                 item1.GoodName = "АИ-95"; // название
                 item1.FuellingPoint = 1; // ТРК №1
                 item1.OrderUnit = (int)OrderUnit.UnitQuty;
-                item1.Price = 10; // Цена
+                item1.Price = 1; // Цена
                 item1.Quantity = 2; // Количество
                 res = ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 121,  item1);
                 AddText((DateTime.Now - start).ToString());
@@ -958,7 +958,7 @@ namespace PC_SC_Driver
                 item1.GoodName = "Стрижка"; // название
                 item1.FuellingPoint = 1; // ТРК №1
                 item1.OrderUnit = (int)OrderUnit.UnitMoney;
-                item1.Price = 10; // Цена
+                item1.Price = 1; // Цена
                 item1.Quantity = 2; // Количество                res += ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 3, 122, item1);
                 res += ServioCardsShell.CardOperationExecute(CardOperationType.Sale, 1, 123, item1);
                 AddText((DateTime.Now - start).ToString());

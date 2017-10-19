@@ -52,6 +52,17 @@ namespace ServioBonus
     }
     public unsafe class ServioCardsShell
     {
+        private static int InitInternal(string paramsFile, ref IntPtr objRef)
+        {
+            var logDir = @"C:\ServioCardAPI\SDK\Out";
+            //InitReader(@"FEIG ELECTRONIC GmbH ID CPR44.xx Slot:CL 481902244", logDir);
+            InitReader(@"ACS ACR1281 1S Dual Reader PICC 0", logDir);
+            return Init(paramsFile, ref objRef);
+        }
+
+        [DllImport(@"C:\ServioCardAPI\SDK\CustomMifare.dll")]
+        public static extern string InitReader(string paramsFile, string logDir);
+
         [DllImport(@"C:\ServioCardAPI\SDK\Mifaread3.dll")]
         private static extern int Init([MarshalAs(UnmanagedType.LPWStr)]string paramsFile, ref IntPtr objRef);
 
@@ -459,7 +470,7 @@ namespace ServioBonus
                 _pin = pin;
                 IntPtr obj = new IntPtr();
 
-                if ((res.ErrorCore = Init(_config, ref obj)) != 0)
+                if ((res.ErrorCore = InitInternal(_config, ref obj)) != 0)
                     throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
                 SetCallback(obj, Marshal.GetFunctionPointerForDelegate(Callback), IntPtr.Zero);
@@ -507,7 +518,7 @@ namespace ServioBonus
             ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
-            if ((res.ErrorCore = Init(_config, ref obj)) != 0)
+            if ((res.ErrorCore = InitInternal(_config, ref obj)) != 0)
                 throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
@@ -570,7 +581,7 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int) ErrorCodes.ESuccess)
+                if ((res.ErrorCore = InitInternal(_config, ref obj)) != (int) ErrorCodes.ESuccess)
                 {
                     if (res.ErrorCore == (int) ErrorCodes.ECancel)
                     {
@@ -598,11 +609,13 @@ namespace ServioBonus
                 operation.IsPostpay = 0; // как есть - если постоплата - указать true
                 operation.CardType = (int) CardType.Unknown; // Предположим что тип карты неизвестен
                 operation.SerialNumber = serialNumber; // Указать серийный номер, считанный с метки
-                operation.IssuerID = -1;// Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
+                operation.IssuerID = -1;
+                    // Указать -1, программа сама переопределит. Если указать другой код - программа будет использовать его
                 operation.CardNumber = ""; // Не указывать !!!
                 operation.AddPrefixZeros = 0; // Нужна доп. настройка. Аналогичная нашей опции в обработчиках
                 operation.WoCard = 0; //
-                operation.PINChecked = 0;// Если указать false то драйвер запросит форму ввода пароля через callback в случае, если на карту поставили PIN-код
+                operation.PINChecked = 0;
+                    // Если указать false то драйвер запросит форму ввода пароля через callback в случае, если на карту поставили PIN-код
                 operation.ItemCount = 0; // Позиции не нужны
 
                 UnMemory<CardOperation>.SaveInMem(operation, ref operationPtr);
@@ -620,6 +633,10 @@ namespace ServioBonus
                 res.IssuerID = operation.IssuerID;
                 res.CardNumber = operation.CardNumber.PadLeft(20, '0');
                 return res;
+            }
+            catch (CardShellException ex)
+            {
+                return new ServioCardInfo { ErrorCore = ex.ErrorCode};
             }
             catch
             {
@@ -639,7 +656,7 @@ namespace ServioBonus
             ServioCardInfo res = new ServioCardInfo { ErrorCore = -1, CardNumber = "", IssuerID = -1 };
             IntPtr obj = new IntPtr();
 
-            if ((res.ErrorCore = Init(_config, ref obj)) != 0)
+            if ((res.ErrorCore = InitInternal(_config, ref obj)) != 0)
                 throw new CardShellException("Error Init No" + res, res.ErrorCore);
 
             IntPtr serialNumberPtr = Marshal.AllocHGlobal(sizeof(SerialnumberT));
@@ -665,7 +682,7 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.ESuccess)
+                if ((res.ErrorCore = InitInternal(_config, ref obj)) != (int)ErrorCodes.ESuccess)
                 {
                     if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
@@ -755,7 +772,7 @@ namespace ServioBonus
 
             try
             {
-                if ((res.ErrorCore = Init(_config, ref obj)) != (int)ErrorCodes.ESuccess)
+                if ((res.ErrorCore = InitInternal(_config, ref obj)) != (int)ErrorCodes.ESuccess)
                 {
                     if (res.ErrorCore == (int)ErrorCodes.ECancel)
                     {
